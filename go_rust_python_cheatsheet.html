@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go · Rust · Python Live-Coding Cheatsheet</title>
+<link rel="stylesheet" href="assets/cheatsheet.css">
+<script src="assets/fit.js" defer></script>
+</head>
+<body>
+<div class="page">
+<header class="top"><span class="badge go">GO</span><span class="badge rust">RUST</span><span class="badge py">PY</span><h1>Live-Coding <span>Cheatsheet</span></h1>
+<p class="tagline">Same task, three languages, side by side · syntax, containers, sort, strings, producer → consumers · one A3 sheet</p>
+<div class="key">syntax key <code class="k">keyword</code><code class="t">i64</code><code class="T">Type</code><code class="s">"str"</code><code class="b">builtin</code><code class="c">// comment</code><br><span class="star">★</span> use constantly · <b class="tb">E0xxx</b> Rust compiler error · rows aligned by topic</div>
+</header>
+<main class="fit"><div class="halves">
+<div class="half">
+<div class="langs"><div class="lg">Go</div><div class="lr">Rust</div><div class="lp">Python</div></div>
+
+<!-- 01 Skeleton · Fast I/O -->
+<section class="row io" id="s01">
+<h2><span class="no">01</span>Skeleton · Fast I/O<em>I/O</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">package</span> main
+<span class="k">import</span> (<span class="s">"bufio"</span>; <span class="s">"fmt"</span>; <span class="s">"os"</span>; <span class="s">"strconv"</span>; <span class="s">"strings"</span>)
+<span class="k">func</span> main() {
+    in := bufio.<span class="T">NewReader</span>(os.<span class="T">Stdin</span>)
+    out := bufio.<span class="T">NewWriter</span>(os.<span class="T">Stdout</span>)
+    <span class="k">defer</span> out.<span class="T">Flush</span>()                    <span class="c">// or nothing prints! </span><span class="star">★</span>
+    <span class="k">var</span> n <span class="t">int</span>
+    fmt.<span class="T">Fscan</span>(in, &amp;n)                    <span class="c">// tokens</span>
+    a := <span class="b">make</span>([]<span class="t">int</span>, n)
+    <span class="k">for</span> i := <span class="k">range</span> a { fmt.<span class="T">Fscan</span>(in, &amp;a[i]) }
+    fmt.<span class="T">Fprintln</span>(out, n, a[<span class="n">0</span>])
+}
+sc := bufio.<span class="T">NewScanner</span>(os.<span class="T">Stdin</span>)         <span class="c">// line based</span>
+<span class="k">for</span> sc.<span class="T">Scan</span>() { f := strings.<span class="T">Fields</span>(sc.<span class="T">Text</span>()) }  <span class="c">// + strconv.Atoi</span></pre>
+<pre class="rs"><span class="k">use</span> std::io::{<span class="k">self</span>, <span class="T">Read</span>, <span class="T">Write</span>, <span class="T">BufRead</span>};
+<span class="k">fn</span> main() {
+    <span class="k">let</span> <span class="k">mut</span> s = <span class="T">String</span>::new();
+    io::stdin().read_to_string(&amp;<span class="k">mut</span> s).unwrap();
+    <span class="k">let</span> <span class="k">mut</span> it = s.split_ascii_whitespace()
+        .map(|x| x.parse::&lt;<span class="t">i64</span>&gt;().unwrap());
+    <span class="k">let</span> n = it.next().unwrap() <span class="k">as</span> <span class="t">usize</span>;
+    <span class="k">let</span> a: <span class="T">Vec</span>&lt;<span class="t">i64</span>&gt; = it.by_ref().take(n).collect();
+    <span class="k">let</span> out = io::stdout();
+    <span class="k">let</span> <span class="k">mut</span> w = io::<span class="T">BufWriter</span>::new(out.lock());  <span class="c">// </span><span class="star">★</span>
+    <span class="b">writeln!</span>(w, <span class="s">"{} {}"</span>, n, a[<span class="n">0</span>]).unwrap();
+}
+<span class="k">for</span> line <span class="k">in</span> io::stdin().lock().lines() {     <span class="c">// line based</span>
+    <span class="k">let</span> f: <span class="T">Vec</span>&lt;<span class="t">i64</span>&gt; = line.unwrap().split_whitespace()
+        .map(|x| x.parse().unwrap()).collect(); }</pre>
+<pre class="py"><span class="k">import</span> sys
+<span class="b">input</span> = sys.stdin.readline               <span class="c"># fast input </span><span class="star">★</span>
+n = <span class="t">int</span>(<span class="b">input</span>())
+a = <span class="t">list</span>(<span class="b">map</span>(<span class="t">int</span>, <span class="b">input</span>().split()))
+x, y = <span class="b">map</span>(<span class="t">int</span>, <span class="b">input</span>().split())
+<span class="b">print</span>(n, a[<span class="n">0</span>])
+<span class="c"># all at once</span>
+data = sys.stdin.read().split(); it = <span class="b">iter</span>(data)
+n = <span class="t">int</span>(<span class="b">next</span>(it)); a = [<span class="t">int</span>(<span class="b">next</span>(it)) <span class="k">for</span> _ <span class="k">in</span> <span class="b">range</span>(n)]
+out = []; out.append(<span class="s">f"{n} {a[0]}"</span>)         <span class="c"># fast output</span>
+sys.stdout.write(<span class="s">"\n"</span>.join(out) + <span class="s">"\n"</span>)
+sys.setrecursionlimit(<span class="n">1</span> &lt;&lt; <span class="n">25</span>)            <span class="c"># deep DFS</span></pre>
+</div>
+</section>
+
+<!-- 02 Variables · Types · Casting -->
+<section class="row syn" id="s02">
+<h2><span class="no">02</span>Variables · Types · Casting<em>SYNTAX</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">var</span> x <span class="t">int</span> = <span class="n">5</span>;  y := <span class="n">10</span>;  <span class="k">const</span> <span class="T">Mod</span> = <span class="n">1_000_000_007</span>
+<span class="k">var</span> a, b <span class="t">int</span>;  a, b = b, a               <span class="c">// swap</span>
+x := <span class="t">int64</span>(y) * <span class="t">int64</span>(z)                 <span class="c">// explicit widen</span>
+f := <span class="t">float64</span>(n) / <span class="t">float64</span>(m);  i := <span class="t">int</span>(f)  <span class="c">// trunc</span>
+n, err := strconv.<span class="T">Atoi</span>(s);  s = strconv.<span class="T">Itoa</span>(n)
+d := <span class="t">int</span>(c - <span class="s">'0'</span>);  c := <span class="t">byte</span>(<span class="s">'a'</span> + i)
+math.<span class="T">MaxInt64</span>  math.<span class="T">MinInt</span>  math.<span class="T">Inf</span>(<span class="n">1</span>)
+(x%m + m) % m                            <span class="c">// non-neg mod</span>
+<span class="b">min</span>(a, b)  <span class="b">max</span>(a, b)  <span class="c">// int is 64-bit: no overflow worry</span></pre>
+<pre class="rs"><span class="k">let</span> x = <span class="n">5</span>;  <span class="k">let</span> <span class="k">mut</span> y: <span class="t">u64</span> = <span class="n">10</span>;  <span class="k">const</span> <span class="T">MOD</span>: <span class="t">i64</span> = <span class="n">1_000_000_007</span>;
+<span class="k">let</span> (a, b) = (b, a);                     <span class="c">// swap (shadow)</span>
+<span class="k">let</span> i = y <span class="k">as</span> <span class="t">i32</span>;  <span class="k">let</span> idx = n <span class="k">as</span> <span class="t">usize</span>; <span class="c">// index = usize </span><span class="star">★</span>
+<span class="k">let</span> f = a <span class="k">as</span> <span class="t">f64</span> / b <span class="k">as</span> <span class="t">f64</span>;  <span class="k">let</span> i = f <span class="k">as</span> <span class="t">i64</span>;  <span class="c">// trunc</span>
+<span class="k">let</span> n: <span class="t">i32</span> = s.parse().unwrap();  n.to_string()
+<span class="k">let</span> d = (c <span class="k">as</span> <span class="t">u8</span> - <span class="s">b'0'</span>) <span class="k">as</span> <span class="t">usize</span>;  (<span class="s">b'a'</span> + i <span class="k">as</span> <span class="t">u8</span>) <span class="k">as</span> <span class="t">char</span>
+<span class="t">i64</span>::<span class="T">MAX</span>  <span class="t">i64</span>::<span class="T">MIN</span>  <span class="t">f64</span>::<span class="T">INFINITY</span>  x.rem_euclid(m)
+x.abs_diff(y)  x.checked_add(y)  x.min(y)  x.pow(<span class="n">3</span>)</pre>
+<pre class="py">x = <span class="n">5</span>;  y = <span class="n">10</span>;  <span class="T">MOD</span> = <span class="n">10</span>**<span class="n">9</span> + <span class="n">7</span>         <span class="c"># ints are unbounded </span><span class="star">★</span>
+a, b = b, a                               <span class="c"># swap</span>
+f = a / b;  q = a // b;  r = a % b     <span class="c"># // floors; % non-neg (m&gt;0)</span>
+<span class="t">int</span>(f)  <span class="b">round</span>(f)  <span class="t">float</span>(n)  <span class="t">int</span>(<span class="s">"42"</span>)  <span class="t">str</span>(n)
+<span class="b">ord</span>(c) - <span class="b">ord</span>(<span class="s">'0'</span>)   <span class="b">chr</span>(<span class="b">ord</span>(<span class="s">'a'</span>) + i)
+<span class="t">float</span>(<span class="s">'inf'</span>)  -<span class="t">float</span>(<span class="s">'inf'</span>)  math.inf
+<span class="b">divmod</span>(a, b)  <span class="b">abs</span>(x)  <span class="b">pow</span>(b, e, m)  x ** <span class="n">0.5</span>
+<span class="b">isinstance</span>(x, <span class="t">int</span>)  <span class="b">type</span>(x)</pre>
+</div>
+</section>
+
+<!-- 03 Control Flow -->
+<section class="row syn" id="s03">
+<h2><span class="no">03</span>Control Flow<em>SYNTAX</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">if</span> x &gt; <span class="n">0</span> { } <span class="k">else</span> <span class="k">if</span> x &lt; <span class="n">0</span> { } <span class="k">else</span> { }
+<span class="k">if</span> v, ok := m[k]; ok { }                 <span class="c">// init stmt</span>
+<span class="k">for</span> i := <span class="n">0</span>; i &lt; n; i++ { }   <span class="k">for</span> i := <span class="k">range</span> n { }
+<span class="k">for</span> i := <span class="n">1</span>; i &lt;= <span class="n">10</span>; i++ { }  <span class="c">// 1..10 inclusive </span><span class="star">★</span>
+<span class="k">for</span> i, v := <span class="k">range</span> a { }      <span class="k">for</span> k, v := <span class="k">range</span> m { }
+<span class="k">for</span> cond { }  <span class="c">/* while */</span>    <span class="k">for</span> { <span class="k">break</span> }  <span class="c">/* loop */</span>
+outer: <span class="k">for</span> .. { <span class="k">for</span> .. { <span class="k">continue</span> outer } }
+<span class="k">switch</span> x { <span class="k">case</span> <span class="n">1</span>, <span class="n">2</span>: ..; <span class="k">case</span> <span class="n">3</span>: ..; <span class="k">default</span>: .. }
+<span class="k">switch</span> { <span class="k">case</span> x &lt; <span class="n">0</span>: ..; <span class="k">case</span> x &lt; <span class="n">10</span>: .. }  <span class="c">// if-chain</span></pre>
+<pre class="rs"><span class="k">if</span> x &gt; <span class="n">0</span> { } <span class="k">else</span> <span class="k">if</span> x &lt; <span class="n">0</span> { } <span class="k">else</span> { }
+<span class="k">let</span> s = <span class="k">if</span> x &gt; <span class="n">0</span> { <span class="s">"p"</span> } <span class="k">else</span> { <span class="s">"n"</span> };   <span class="c">// expression</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="n">0</span>..n { }   <span class="k">for</span> i <span class="k">in</span> (<span class="n">0</span>..n).rev() { }
+<span class="k">for</span> i <span class="k">in</span> <span class="n">1</span>..=<span class="n">10</span> { }   <span class="c">// 1..10 inclusive </span><span class="star">★</span><span class="c"> (1..10 stops at 9)</span>
+<span class="k">for</span> (i, v) <span class="k">in</span> a.iter().enumerate() { }   <span class="k">for</span> v <span class="k">in</span> &amp;a { }
+<span class="k">while</span> cond { }   <span class="k">loop</span> { <span class="k">break</span>; }   <span class="k">while</span> <span class="k">let</span> <span class="p">Some</span>(x) = st.pop() { }
+<span class="w">'outer</span>: <span class="k">for</span> .. { <span class="k">for</span> .. { <span class="k">continue</span> <span class="w">'outer</span>; } }
+<span class="k">match</span> x { <span class="n">0</span> =&gt; a, <span class="n">1</span> | <span class="n">2</span> =&gt; b, <span class="n">3</span>..=<span class="n">9</span> =&gt; c, n <span class="k">if</span> n &lt; <span class="n">0</span> =&gt; d, _ =&gt; e }
+<span class="k">if</span> <span class="k">let</span> <span class="p">Some</span>(v) = m.get(&amp;k) { }   <span class="k">let</span> <span class="p">Some</span>(v) = o <span class="k">else</span> { <span class="k">return</span> };</pre>
+<pre class="py"><span class="k">if</span> x &gt; <span class="n">0</span>: ...  <span class="k">elif</span> x &lt; <span class="n">0</span>: ...  <span class="k">else</span>: ...
+s = <span class="s">"p"</span> <span class="k">if</span> x &gt; <span class="n">0</span> <span class="k">else</span> <span class="s">"n"</span>               <span class="c"># ternary</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="b">range</span>(n): ...   <span class="k">for</span> i <span class="k">in</span> <span class="b">range</span>(n - <span class="n">1</span>, -<span class="n">1</span>, -<span class="n">1</span>): ...
+<span class="k">for</span> i <span class="k">in</span> <span class="b">range</span>(<span class="n">1</span>, <span class="n">11</span>): ...   <span class="c"># 1..10 inclusive </span><span class="star">★</span><span class="c"> (stop excluded)</span>
+<span class="k">for</span> i, v <span class="k">in</span> <span class="b">enumerate</span>(a): ...   <span class="k">for</span> k, v <span class="k">in</span> d.items(): ...
+<span class="k">while</span> cond: ...   <span class="k">for</span> ..: ... <span class="k">else</span>: ... <span class="c"># else runs if no break</span>
+<span class="k">match</span> x:                                 <span class="c"># 3.10+</span>
+    <span class="k">case</span> <span class="n">0</span> | <span class="n">1</span>: ...   <span class="k">case</span> [a, b, *rest]: ...   <span class="k">case</span> _: ...</pre>
+</div>
+</section>
+
+<!-- 04 Functions · Closures -->
+<section class="row syn" id="s04">
+<h2><span class="no">04</span>Functions · Closures<em>SYNTAX</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">func</span> add(a, b <span class="t">int</span>) <span class="t">int</span> { <span class="k">return</span> a + b }
+<span class="k">func</span> divmod(a, b <span class="t">int</span>) (<span class="t">int</span>, <span class="t">int</span>) { <span class="k">return</span> a / b, a % b }
+<span class="k">func</span> sum(xs ...<span class="t">int</span>) <span class="t">int</span> { }   sum(v...)        <span class="c">// variadic</span>
+sq := <span class="k">func</span>(x <span class="t">int</span>) <span class="t">int</span> { <span class="k">return</span> x * x }
+cnt := <span class="n">0</span>;  inc := <span class="k">func</span>() { cnt++ }            <span class="c">// captures by ref</span>
+<span class="k">var</span> dfs <span class="k">func</span>(u <span class="t">int</span>)                       <span class="c">// recursive closure </span><span class="star">★</span>
+dfs = <span class="k">func</span>(u <span class="t">int</span>) { .. dfs(v) .. }
+<span class="k">defer</span> f.<span class="T">Close</span>()   <span class="k">defer</span> <span class="k">func</span>(){ <span class="b">recover</span>() }()
+<span class="k">func</span> <span class="T">Max</span>[<span class="T">T</span> cmp.<span class="T">Ordered</span>](a, b <span class="T">T</span>) <span class="T">T</span> { .. }      <span class="c">// generics</span></pre>
+<pre class="rs"><span class="k">fn</span> add(a: <span class="t">i32</span>, b: <span class="t">i32</span>) -&gt; <span class="t">i32</span> { a + b }       <span class="c">// last expr returns</span>
+<span class="k">fn</span> sum(v: &amp;[<span class="t">i64</span>]) -&gt; <span class="t">i64</span> { v.iter().sum() }   <span class="c">// take slices </span><span class="star">★</span>
+<span class="k">fn</span> f(v: &amp;<span class="k">mut</span> <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt;) { v.push(<span class="n">1</span>); }         <span class="c">// mutate</span>
+<span class="k">let</span> sq = |x: <span class="t">i32</span>| x * x;   <span class="k">let</span> <span class="k">mut</span> inc = || cnt += <span class="n">1</span>;
+<span class="k">let</span> f = <span class="k">move</span> |x| x + off;                     <span class="c">// take ownership</span>
+<span class="k">fn</span> dfs(u: <span class="t">usize</span>, g: &amp;[<span class="T">Vec</span>&lt;<span class="t">usize</span>&gt;], vis: &amp;<span class="k">mut</span> [<span class="t">bool</span>]) { }
+<span class="k">fn</span> big&lt;<span class="T">T</span>: <span class="T">Ord</span> + <span class="T">Copy</span>&gt;(a: <span class="T">T</span>, b: <span class="T">T</span>) -&gt; <span class="T">T</span> { <span class="k">if</span> a &gt; b {a} <span class="k">else</span> {b} }
+<span class="k">fn</span> apply(f: <span class="k">impl</span> <span class="T">Fn</span>(<span class="t">i32</span>) -&gt; <span class="t">i32</span>, x: <span class="t">i32</span>) -&gt; <span class="t">i32</span> { f(x) }</pre>
+<pre class="py"><span class="k">def</span> add(a, b): <span class="k">return</span> a + b
+<span class="k">def</span> divmod_(a, b): <span class="k">return</span> a // b, a % b       <span class="c"># tuple return</span>
+q, r = divmod_(<span class="n">7</span>, <span class="n">2</span>)
+<span class="k">def</span> f(*args, **kw): ...   f(*lst)             <span class="c"># varargs / unpack</span>
+sq = <span class="k">lambda</span> x: x * x
+<span class="k">def</span> dfs(u):                                   <span class="c"># recursion</span>
+    <span class="k">for</span> v <span class="k">in</span> g[u]: dfs(v)
+<span class="k">def</span> inc(): <span class="k">nonlocal</span> cnt; cnt += <span class="n">1</span>             <span class="c"># closure write</span>
+<span class="k">from</span> functools <span class="k">import</span> lru_cache
+@lru_cache(<span class="k">None</span>)                              <span class="c"># memoize </span><span class="star">★</span>
+<span class="k">def</span> fib(n): <span class="k">return</span> n <span class="k">if</span> n &lt; <span class="n">2</span> <span class="k">else</span> fib(n-<span class="n">1</span>) + fib(n-<span class="n">2</span>)</pre>
+</div>
+</section>
+
+<!-- 05 Array · List · Vec · Slice -->
+<section class="row col" id="s05">
+<h2><span class="no">05</span>Array · List · Vec · Slice<em>COLLECTIONS</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">var</span> a [<span class="n">26</span>]<span class="t">int</span>               <span class="c">// array: fixed, value type</span>
+s := []<span class="t">int</span>{<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>};  s := <span class="b">make</span>([]<span class="t">int</span>, n)   <span class="c">/* n zeros */</span>
+s := <span class="b">make</span>([]<span class="t">int</span>, <span class="n">0</span>, n)      <span class="c">// len 0 cap n </span><span class="star">★</span>
+g := <span class="b">make</span>([][]<span class="t">int</span>, n); <span class="k">for</span> i := <span class="k">range</span> g { g[i] = <span class="b">make</span>([]<span class="t">int</span>, m) }
+s = <span class="b">append</span>(s, x)            <span class="c">// ALWAYS reassign </span><span class="star">★</span>
+<span class="b">len</span>(s)  s[i]  s[<span class="b">len</span>(s)-<span class="n">1</span>]   s = s[:<span class="b">len</span>(s)-<span class="n">1</span>]  <span class="c">/* pop */</span>
+s = <span class="b">append</span>(s[:i], s[i+<span class="n">1</span>:]...)             <span class="c">// remove i</span>
+s[i], s[j] = s[j], s[i]     slices.<span class="T">Reverse</span>(s)
+slices.<span class="T">Contains</span>(s, x)  slices.<span class="T">Index</span>(s, x)  slices.<span class="T">Max</span>(s)
+c := slices.<span class="T">Clone</span>(s)        <span class="c">// copy; `=` shares memory </span><span class="star">★</span></pre>
+<pre class="rs"><span class="k">let</span> arr = [<span class="n">0u8</span>; <span class="n">26</span>];        <span class="c">// array: fixed, Copy</span>
+<span class="k">let</span> <span class="k">mut</span> v = <span class="b">vec!</span>[<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>];  <span class="k">let</span> v = <span class="b">vec!</span>[<span class="n">0</span>; n];
+<span class="k">let</span> v = <span class="T">Vec</span>::with_capacity(n);
+<span class="k">let</span> g = <span class="b">vec!</span>[<span class="b">vec!</span>[<span class="n">0</span>; m]; n];              <span class="c">// 2D </span><span class="star">★</span>
+v.push(x)  v.pop()<span class="c">/*Option*/</span>  v.len()  v[i]  v.last()
+v.insert(i, x)  v.remove(i)  v.swap_remove(i)
+v.swap(i, j)  v.reverse()  v.contains(&amp;x)
+v.iter().position(|&amp;e| e == x)  v.iter().max()
+<span class="k">let</span> c = v.clone();          <span class="c">// deep copy; `=` moves </span><span class="star">★</span>
+v.retain(|&amp;x| x &gt; <span class="n">0</span>)  v.dedup()  v.truncate(k)</pre>
+<pre class="py">a = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>];  a = [<span class="n">0</span>] * n;  g = [[<span class="n">0</span>] * m <span class="k">for</span> _ <span class="k">in</span> <span class="b">range</span>(n)]  <span class="c"># 2D</span>
+a = [<span class="n">0</span>] * n;  g = [[<span class="n">0</span>]*m]*n   <span class="c"># BUG: rows alias </span><span class="star">★</span>
+a.append(x)  a.pop()  a.pop(<span class="n">0</span>)  <span class="c">/*O(n)*/</span>  a.insert(i, x)
+<span class="b">len</span>(a)  a[i]  a[-<span class="n">1</span>]  a.index(x)  a.count(x)  x <span class="k">in</span> a
+a.remove(x)  <span class="k">del</span> a[i]  a.reverse()  a[::-<span class="n">1</span>]
+a[i], a[j] = a[j], a[i]   <span class="b">max</span>(a)  <span class="b">min</span>(a)  <span class="b">sum</span>(a)
+b = a[:]  b = a.copy()  b = <span class="t">list</span>(a)   <span class="c"># copy; `=` aliases </span><span class="star">★</span>
+<span class="k">import</span> copy; copy.deepcopy(g)         <span class="c"># nested</span>
+a.extend(b)  a += b  a * <span class="n">3</span>  a.clear()</pre>
+</div>
+</section>
+
+<!-- 06 Slicing · Concat · Conversion -->
+<section class="row col" id="s06">
+<h2><span class="no">06</span>Slicing · Concat · Conversion<em>COLLECTIONS</em></h2>
+<div class="tri">
+<pre class="go">s[<span class="n">1</span>:<span class="n">3</span>]  s[:k]  s[k:]        <span class="c">// shares backing array </span><span class="star">★</span>
+c := <span class="b">append</span>([]<span class="t">int</span>{}, a...); c = <span class="b">append</span>(c, b...)  <span class="c">// safe</span>
+c := slices.<span class="T">Concat</span>(a, b)    <span class="c">// 1.22+ new slice </span><span class="star">★</span>
+a = <span class="b">append</span>(a, b...)         <span class="c">// may alias if cap fits</span>
+flat := slices.<span class="T">Concat</span>(grid...)
+s := arr[:]                 <span class="c">// array -&gt; slice</span>
+arr := [<span class="n">3</span>]<span class="t">int</span>(s)            <span class="c">// slice -&gt; array (len match)</span>
+<span class="b">copy</span>(dst, src)              <span class="c">// min(len) elems</span>
+strs := strings.<span class="T">Split</span>(s, <span class="s">" "</span>)   strings.<span class="T">Join</span>(strs, <span class="s">","</span>)
+[]<span class="t">byte</span>(s)  <span class="t">string</span>(bs)  []<span class="t">rune</span>(s)  <span class="t">string</span>(rs)</pre>
+<pre class="rs">&amp;v[<span class="n">1</span>..<span class="n">3</span>]  &amp;v[..k]  &amp;v[k..]  v.split_at(k)
+<span class="k">let</span> c = [&amp;a[..], &amp;b[..]].concat();        <span class="c">// keep both </span><span class="star">★</span>
+<span class="k">let</span> c = [a, b].concat();                  <span class="c">// moves a, b</span>
+a.extend_from_slice(&amp;b) <span class="c">/* keep b */</span>  a.append(&amp;<span class="k">mut</span> b) <span class="c">/* drain b */</span>
+<span class="k">let</span> c: <span class="T">Vec</span>&lt;_&gt; = a.iter().chain(&amp;b).cloned().collect();
+<span class="k">let</span> flat: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = grid.concat();
+<span class="k">let</span> v = arr.to_vec();  <span class="k">let</span> arr: [<span class="t">i32</span>; <span class="n">3</span>] = v.try_into().unwrap();
+v.windows(<span class="n">2</span>)  v.chunks(<span class="n">3</span>)  v.iter().zip(&amp;w)
+<span class="k">let</span> s: <span class="T">String</span> = cs.iter().collect();   s.chars().collect::&lt;<span class="T">Vec</span>&lt;_&gt;&gt;()
+s.as_bytes()  <span class="T">String</span>::from_utf8(bytes)</pre>
+<pre class="py">a[<span class="n">1</span>:<span class="n">3</span>]  a[:k]  a[k:]  a[::<span class="n">2</span>]  a[::-<span class="n">1</span>]    <span class="c"># copies </span><span class="star">★</span>
+c = a + b                                 <span class="c"># new list</span>
+a += b  a.extend(b)                       <span class="c"># in place</span>
+flat = [x <span class="k">for</span> row <span class="k">in</span> g <span class="k">for</span> x <span class="k">in</span> row]
+flat = <span class="t">list</span>(itertools.chain.from_iterable(g))
+<span class="t">list</span>(<span class="b">zip</span>(a, b))   <span class="t">list</span>(<span class="b">zip</span>(*g))  <span class="c"># transpose </span><span class="star">★</span>
+<span class="t">list</span>(<span class="s">"abc"</span>)  <span class="s">""</span>.join(chars)  s.split()  <span class="s">","</span>.join(<span class="b">map</span>(<span class="t">str</span>, a))
+<span class="t">list</span>(<span class="b">range</span>(n))  <span class="t">tuple</span>(a)  <span class="t">set</span>(a)  <span class="t">dict</span>(pairs)
+s.encode()  b.decode()  <span class="t">bytes</span>([<span class="n">65</span>])  <span class="t">bytearray</span>(<span class="s">b"ab"</span>)</pre>
+</div>
+</section>
+
+<!-- 07 Map · Set -->
+<section class="row col" id="s07">
+<h2><span class="no">07</span>Map · Set<em>COLLECTIONS</em></h2>
+<div class="tri">
+<pre class="go">m := <span class="k">map</span>[<span class="t">string</span>]<span class="t">int</span>{};  m := <span class="b">make</span>(<span class="k">map</span>[<span class="t">string</span>]<span class="t">int</span>, n)
+m[k] = v;  v := m[k]  <span class="c">/* zero if missing */</span>   <span class="b">delete</span>(m, k)
+v, ok := m[k];  <span class="k">if</span> _, ok := m[k]; !ok { }
+m[k]++                      <span class="c">// counting </span><span class="star">★</span>
+m[k] = <span class="b">append</span>(m[k], x)      <span class="c">// adjacency </span><span class="star">★</span>
+<span class="k">for</span> k, v := <span class="k">range</span> m { }     <span class="c">// random order!</span>
+keys := slices.<span class="T">Sorted</span>(maps.<span class="T">Keys</span>(m))        <span class="c">// 1.23</span>
+seen := <span class="k">map</span>[<span class="t">int</span>]<span class="t">bool</span>{}; seen[x] = <span class="p">true</span>; <span class="k">if</span> seen[x] { }
+m := <span class="k">map</span>[[<span class="n">2</span>]<span class="t">int</span>]<span class="t">int</span>{}      <span class="c">// struct / array keys ok, slice NO</span>
+<span class="k">var</span> m <span class="k">map</span>[<span class="T">K</span>]<span class="T">V</span>  <span class="c">// nil: write PANICS -&gt; use make </span><span class="star">★</span></pre>
+<pre class="rs"><span class="k">use</span> std::collections::{<span class="T">HashMap</span>, <span class="T">HashSet</span>, <span class="T">BTreeMap</span>};
+<span class="k">let</span> <span class="k">mut</span> m: <span class="T">HashMap</span>&lt;<span class="T">String</span>, <span class="t">i32</span>&gt; = <span class="T">HashMap</span>::new();
+m.insert(k, v);  m.get(&amp;k)<span class="c">/*Option&lt;&amp;V&gt;*/</span>  m[&amp;k]<span class="c">/*panics*/</span>
+m.contains_key(&amp;k)  m.remove(&amp;k)  m.len()
+*m.entry(k).or_insert(<span class="n">0</span>) += <span class="n">1</span>;             <span class="c">// counting </span><span class="star">★</span>
+m.entry(k).or_default().push(x);           <span class="c">// adjacency </span><span class="star">★</span>
+<span class="k">for</span> (k, v) <span class="k">in</span> &amp;m { }   m.keys()  m.values()
+<span class="k">let</span> <span class="k">mut</span> s = <span class="T">HashSet</span>::new(); s.insert(x); s.contains(&amp;x)
+<span class="T">BTreeMap</span>: sorted; b.range(k..).next()  b.first_key_value()
+<span class="t">f64</span> can<span class="w">'t</span> be key; tuples / <span class="T">Vec</span> / <span class="T">String</span> can</pre>
+<pre class="py">d = {};  d = {<span class="s">"a"</span>: <span class="n">1</span>};  d = <span class="t">dict</span>();  d[k] = v;  d[k]  <span class="c"># KeyError</span>
+d.get(k, <span class="n">0</span>)   k <span class="k">in</span> d   <span class="k">del</span> d[k]   d.pop(k, <span class="k">None</span>)   <span class="b">len</span>(d)
+d[k] = d.get(k, <span class="n">0</span>) + <span class="n">1</span>                     <span class="c"># counting</span>
+<span class="k">from</span> collections <span class="k">import</span> defaultdict, <span class="T">Counter</span>
+dd = defaultdict(<span class="t">int</span>); dd[k] += <span class="n">1</span>          <span class="c"># </span><span class="star">★</span>
+dd = defaultdict(<span class="t">list</span>); dd[k].append(x)    <span class="c"># adjacency </span><span class="star">★</span>
+cnt = <span class="T">Counter</span>(a); cnt.most_common(<span class="n">3</span>)
+<span class="k">for</span> k, v <span class="k">in</span> d.items():   d.keys()  d.values()  <span class="b">sorted</span>(d)
+s = <span class="t">set</span>(); s.add(x); s.discard(x); x <span class="k">in</span> s; a | b; a &amp; b; a - b
+keys: tuples ok, lists <span class="T">NOT</span> (unhashable); <span class="t">dict</span> keeps insert order</pre>
+</div>
+</section>
+</div>
+<div class="half">
+<div class="langs"><div class="lg">Go</div><div class="lr">Rust</div><div class="lp">Python</div></div>
+
+<!-- 08 Sorting -->
+<section class="row col" id="s08">
+<h2><span class="no">08</span>Sorting<em>COLLECTIONS</em></h2>
+<div class="tri">
+<pre class="go">sort.<span class="T">Ints</span>(a)  sort.<span class="T">Strings</span>(s)  slices.<span class="T">Sort</span>(a)
+sort.<span class="T">Sort</span>(sort.<span class="T">Reverse</span>(sort.<span class="T">IntSlice</span>(a)))         <span class="c">// desc</span>
+sort.<span class="T">Slice</span>(ps, <span class="k">func</span>(i, j <span class="t">int</span>) <span class="t">bool</span> { <span class="k">return</span> ps[i].s &lt; ps[j].s })
+sort.<span class="T">SliceStable</span>(ps, <span class="k">func</span>(i, j <span class="t">int</span>) <span class="t">bool</span> {        <span class="c">// multi-key </span><span class="star">★</span>
+    <span class="k">if</span> ps[i].s != ps[j].s { <span class="k">return</span> ps[i].s &gt; ps[j].s }
+    <span class="k">return</span> ps[i].n &lt; ps[j].n })
+slices.<span class="T">SortFunc</span>(ps, <span class="k">func</span>(a, b <span class="T">P</span>) <span class="t">int</span> {
+    <span class="k">return</span> cmp.<span class="T">Or</span>(cmp.<span class="T">Compare</span>(b.s, a.s), cmp.<span class="T">Compare</span>(a.n, b.n)) })
+i := sort.<span class="T">SearchInts</span>(a, x)                        <span class="c">// lower_bound</span>
+sort.<span class="T">Search</span>(n, <span class="k">func</span>(i <span class="t">int</span>) <span class="t">bool</span> { <span class="k">return</span> a[i] &gt;= x })</pre>
+<pre class="rs">v.sort();  v.sort_unstable();  v.sort_by(|a, b| b.cmp(a)); <span class="c">// desc</span>
+v.sort_by_key(|p| p.<span class="n">1</span>);   v.sort_by_key(|&amp;x| <span class="T">Reverse</span>(x));
+v.sort_by(|a, b| b.<span class="n">1</span>.cmp(&amp;a.<span class="n">1</span>).then(a.<span class="n">0</span>.cmp(&amp;b.<span class="n">0</span>)));   <span class="c">// multi </span><span class="star">★</span>
+v.sort_by_key(|p| (<span class="T">Reverse</span>(p.<span class="n">1</span>), p.<span class="n">0</span>.clone()));
+f.sort_by(|a, b| a.total_cmp(b));          <span class="c">// f64</span>
+idx.sort_by_key(|&amp;i| a[i]);                <span class="c">// argsort</span>
+v.binary_search(&amp;x)  v.partition_point(|&amp;x| x &lt; t)  <span class="c">// lower_bound</span>
+v.iter().max_by_key(|p| p.<span class="n">1</span>)   v.select_nth_unstable(k)</pre>
+<pre class="py">a.sort()  <span class="b">sorted</span>(a)  a.sort(reverse=<span class="k">True</span>)
+a.sort(key=<span class="k">lambda</span> p: p[<span class="n">1</span>])
+a.sort(key=<span class="k">lambda</span> p: (-p[<span class="n">1</span>], p[<span class="n">0</span>]))        <span class="c"># multi-key </span><span class="star">★</span><span class="c"> desc, asc</span>
+<span class="b">sorted</span>(d.items(), key=<span class="k">lambda</span> kv: kv[<span class="n">1</span>])
+<span class="k">from</span> operator <span class="k">import</span> itemgetter, attrgetter; key=itemgetter(<span class="n">1</span>)
+<span class="b">sorted</span>(words, key=<span class="b">len</span>)   <span class="b">max</span>(a, key=f)   <span class="b">min</span>(a, key=f)
+<span class="k">import</span> bisect; bisect.bisect_left(a, x)     <span class="c"># lower_bound</span>
+bisect.bisect_right(a, x)  bisect.insort(a, x)
+<span class="b">sorted</span>(s, key=<span class="t">str</span>.lower)   stable sort by default</pre>
+</div>
+</section>
+
+<!-- 09 Strings · Builder · Bytes -->
+<section class="row col" id="s09">
+<h2><span class="no">09</span>Strings · Builder · Bytes<em>COLLECTIONS</em></h2>
+<div class="tri">
+<pre class="go"><span class="b">len</span>(s) <span class="c">/*bytes*/</span>  s[i] <span class="c">/*byte*/</span>  []<span class="t">rune</span>(s)[i] <span class="c">/*char*/</span>
+<span class="k">for</span> i, r := <span class="k">range</span> s { }     <span class="c">// runes</span>
+strings.<span class="T">Contains</span>  <span class="T">HasPrefix</span>  <span class="T">Index</span>  <span class="T">ToUpper</span>  <span class="T">TrimSpace</span>
+strings.<span class="T">Split</span>(s, <span class="s">","</span>)  <span class="T">Fields</span>(s)  <span class="T">Join</span>(xs, <span class="s">" "</span>)  <span class="T">Repeat</span>
+strings.<span class="T">Replace</span>(s, a, b, -<span class="n">1</span>)  strings.<span class="T">Cut</span>(s, <span class="s">"="</span>)
+s + t  <span class="c">/* ok once */</span>        <span class="c">// in loops use Builder </span><span class="star">★</span>
+<span class="k">var</span> sb strings.<span class="T">Builder</span>; sb.<span class="T">WriteString</span>(<span class="s">"x"</span>); sb.<span class="T">WriteByte</span>(<span class="s">'y'</span>)
+sb.<span class="T">String</span>()   fmt.<span class="T">Fprintf</span>(&amp;sb, <span class="s">"%d"</span>, n)
+<span class="k">var</span> buf bytes.<span class="T">Buffer</span>; buf.<span class="T">WriteString</span>(<span class="s">"x"</span>); buf.<span class="T">Bytes</span>()
+unicode.<span class="T">IsDigit</span>(r)  <span class="s">'a'</span> &lt;= c &amp;&amp; c &lt;= <span class="s">'z'</span>  c - <span class="s">'0'</span></pre>
+<pre class="rs">s.len() <span class="c">/*bytes*/</span>  s.chars().count()  s.as_bytes()[i]  <span class="c">// </span><span class="star">★</span>
+<span class="k">let</span> cs: <span class="T">Vec</span>&lt;<span class="t">char</span>&gt; = s.chars().collect(); cs[i]
+s.contains(<span class="s">"x"</span>) .starts_with .find .to_uppercase .trim()
+s.split(<span class="s">','</span>)  .split_whitespace()  .lines()  .split_once(<span class="s">'='</span>)
+s.replace(<span class="s">"a"</span>, <span class="s">"b"</span>)  .repeat(<span class="n">3</span>)  .chars().rev().collect::&lt;<span class="T">String</span>&gt;()
+<span class="k">let</span> <span class="k">mut</span> t = <span class="T">String</span>::new(); t.push(<span class="s">'x'</span>); t.push_str(<span class="s">"yz"</span>);   <span class="c">// </span><span class="star">★</span>
+t += &amp;u;   <span class="k">let</span> w = <span class="b">format!</span>(<span class="s">"{t}{u}"</span>);   <span class="c">// keep both</span>
+<span class="k">let</span> <span class="k">mut</span> b: <span class="T">Vec</span>&lt;<span class="t">u8</span>&gt; = <span class="T">Vec</span>::new(); b.extend_from_slice(s.as_bytes());
+b.push(<span class="s">b'!'</span>);  <span class="T">String</span>::from_utf8(b).unwrap()
+s.parse::&lt;<span class="t">i32</span>&gt;()  n.to_string()  c.is_ascii_digit()  c.to_digit(<span class="n">10</span>)</pre>
+<pre class="py"><span class="b">len</span>(s)  s[i]  s[-<span class="n">1</span>]  s[<span class="n">1</span>:<span class="n">3</span>]  s[::-<span class="n">1</span>]      <span class="c"># str immutable</span>
+s.upper() .lower() .strip() .startswith() .find(x) <span class="c">/* -1 */</span>
+s.split(<span class="s">","</span>)  s.split()  <span class="s">" "</span>.join(xs)  s.replace(a, b)
+s.isdigit() .isalpha() .isalnum()   c <span class="k">in</span> <span class="s">"aeiou"</span>
+parts = []; parts.append(x); <span class="s">""</span>.join(parts)   <span class="c"># builder </span><span class="star">★</span>
+<span class="k">from</span> io <span class="k">import</span> <span class="T">StringIO</span>; buf = <span class="T">StringIO</span>(); buf.write(<span class="s">"x"</span>)
+ba = <span class="t">bytearray</span>(); ba += <span class="s">b"ab"</span>; ba.append(<span class="n">65</span>); <span class="t">bytes</span>(ba)
+b = s.encode(); b[<span class="n">0</span>]  <span class="c">/* int */</span>   b.decode()
+<span class="s">f"{x:&gt;5} {y:.2f} {n:05d} {v!r}"</span>          <span class="c"># format </span><span class="star">★</span>
+s.zfill(<span class="n">5</span>)  s.count(<span class="s">"a"</span>)  s.ljust(<span class="n">5</span>)  <span class="b">ord</span>(c)  <span class="b">chr</span>(n)</pre>
+</div>
+</section>
+
+<!-- 10 Struct · Methods · Interface / Trait / Class -->
+<section class="row typ" id="s10">
+<h2><span class="no">10</span>Struct · Methods · Interface / Trait / Class<em>TYPES</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">type</span> <span class="T">P</span> <span class="k">struct</span>{ <span class="T">X</span>, <span class="T">Y</span> <span class="t">int</span> }
+p := <span class="T">P</span>{<span class="n">1</span>, <span class="n">2</span>}; pp := &amp;<span class="T">P</span>{<span class="T">X</span>: <span class="n">1</span>}; p2 := p  <span class="c">// copy!</span>
+<span class="k">func</span> (p <span class="T">P</span>) <span class="T">Dist</span>() <span class="t">int</span> { <span class="k">return</span> p.<span class="T">X</span> + p.<span class="T">Y</span> }
+<span class="k">func</span> (p *<span class="T">P</span>) <span class="T">Shift</span>(d <span class="t">int</span>) { p.<span class="T">X</span> += d }   <span class="c">// mutates </span><span class="star">★</span>
+<span class="k">type</span> <span class="T">Shape</span> <span class="k">interface</span> { <span class="T">Area</span>() <span class="t">float64</span> }
+<span class="k">func</span> (c <span class="T">Circle</span>) <span class="T">Area</span>() <span class="t">float64</span> { .. }   <span class="c">// implicit impl</span>
+<span class="k">var</span> s <span class="T">Shape</span> = <span class="T">Circle</span>{<span class="n">2</span>}
+<span class="k">if</span> c, ok := s.(<span class="T">Circle</span>); ok { }
+<span class="k">type</span> <span class="T">Color</span> <span class="t">int</span>; <span class="k">const</span> (<span class="T">Red</span> <span class="T">Color</span> = <span class="p">iota</span>; <span class="T">Green</span>)
+<span class="k">type</span> <span class="T">Named</span> <span class="k">struct</span>{ <span class="T">P</span>; <span class="T">Tag</span> <span class="t">string</span> }      <span class="c">// embedding</span></pre>
+<pre class="rs"><span class="d">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]</span>
+<span class="k">struct</span> <span class="T">P</span> { x: <span class="t">i32</span>, y: <span class="t">i32</span> }
+<span class="k">impl</span> <span class="T">P</span> { <span class="k">fn</span> new(x: <span class="t">i32</span>, y: <span class="t">i32</span>) -&gt; <span class="k">Self</span> { <span class="k">Self</span> { x, y } }
+    <span class="k">fn</span> dist(&amp;<span class="k">self</span>) -&gt; <span class="t">i32</span> { <span class="k">self</span>.x + <span class="k">self</span>.y }
+    <span class="k">fn</span> shift(&amp;<span class="k">mut</span> <span class="k">self</span>, d: <span class="t">i32</span>) { <span class="k">self</span>.x += d; } }
+<span class="k">enum</span> <span class="T">Shape</span> { <span class="T">Circle</span>(<span class="t">f64</span>), <span class="T">Rect</span> { w: <span class="t">f64</span>, h: <span class="t">f64</span> } }
+<span class="k">trait</span> <span class="T">Area</span> { <span class="k">fn</span> area(&amp;<span class="k">self</span>) -&gt; <span class="t">f64</span>; }
+<span class="k">impl</span> <span class="T">Area</span> <span class="k">for</span> <span class="T">P</span> { <span class="k">fn</span> area(&amp;<span class="k">self</span>) -&gt; <span class="t">f64</span> { <span class="n">0.0</span> } }
+<span class="k">fn</span> show(a: &amp;<span class="k">impl</span> <span class="T">Area</span>) { }   <span class="k">fn</span> show(a: &amp;<span class="k">dyn</span> <span class="T">Area</span>) { }
+<span class="k">impl</span> <span class="T">Ord</span> <span class="k">for</span> <span class="T">St</span> { <span class="k">fn</span> cmp(&amp;<span class="k">self</span>, o: &amp;<span class="k">Self</span>) -&gt; <span class="T">Ordering</span> { .. } }</pre>
+<pre class="py"><span class="k">class</span> <span class="T">P</span>:
+    <span class="k">def</span> __init__(<span class="p">self</span>, x, y): <span class="p">self</span>.x, <span class="p">self</span>.y = x, y
+    <span class="k">def</span> dist(<span class="p">self</span>): <span class="k">return</span> <span class="p">self</span>.x + <span class="p">self</span>.y
+    <span class="k">def</span> __repr__(<span class="p">self</span>): <span class="k">return</span> <span class="s">f"P({self.x},{self.y})"</span>
+    <span class="k">def</span> __lt__(<span class="p">self</span>, o): <span class="k">return</span> <span class="p">self</span>.x &lt; o.x     <span class="c"># for sort/heap</span>
+<span class="k">from</span> dataclasses <span class="k">import</span> dataclass
+@dataclass(order=<span class="k">True</span>)                           <span class="c"># </span><span class="star">★</span>
+<span class="k">class</span> <span class="T">P</span>: x: <span class="t">int</span>; y: <span class="t">int</span> = <span class="n">0</span>
+<span class="T">Pt</span> = collections.namedtuple(<span class="s">"Pt"</span>, <span class="s">"x y"</span>); p = <span class="T">Pt</span>(<span class="n">1</span>, <span class="n">2</span>); p.x
+<span class="k">class</span> <span class="T">Dog</span>(<span class="T">Animal</span>): <span class="k">def</span> speak(<span class="p">self</span>): <span class="k">return</span> <span class="s">"woof"</span>  <span class="c"># inherit</span></pre>
+</div>
+</section>
+
+<!-- 11 Errors · Option · Null -->
+<section class="row typ" id="s11">
+<h2><span class="no">11</span>Errors · Option · Null<em>TYPES</em></h2>
+<div class="tri">
+<pre class="go">n, err := strconv.<span class="T">Atoi</span>(s)
+<span class="k">if</span> err != <span class="p">nil</span> { <span class="k">return</span> <span class="n">0</span>, err }         <span class="c">// the idiom </span><span class="star">★</span>
+<span class="k">return</span> <span class="n">0</span>, fmt.<span class="T">Errorf</span>(<span class="s">"ctx: %w"</span>, err)    <span class="c">// wrap</span>
+errors.<span class="T">Is</span>(err, <span class="T">ErrX</span>)  errors.<span class="T">As</span>(err, &amp;e)
+<span class="k">var</span> p *<span class="T">P</span>   <span class="c">// nil pointer; nil slice/map ok to read</span>
+v, ok := m[k]   x, ok := i.(<span class="T">T</span>)   v, ok := &lt;-ch
+<span class="b">panic</span>(<span class="s">"x"</span>)  <span class="k">defer</span> <span class="k">func</span>(){ <span class="b">recover</span>() }()</pre>
+<pre class="rs"><span class="p">Some</span>(x) / <span class="p">None</span>    <span class="p">Ok</span>(x) / <span class="p">Err</span>(e)
+o.unwrap() .expect(<span class="s">"m"</span>) .unwrap_or(<span class="n">0</span>) .unwrap_or_default()
+o.map(|x| ..) .and_then(f) .ok_or(e) .is_some()
+r.ok() .map_err(f) .unwrap_or(d)   r?  o?   <span class="c">// early return </span><span class="star">★</span>
+<span class="k">let</span> <span class="p">Some</span>(v) = o <span class="k">else</span> { <span class="k">return</span>; };
+<span class="k">fn</span> f() -&gt; <span class="T">Result</span>&lt;<span class="T">T</span>, <span class="T">Box</span>&lt;<span class="k">dyn</span> <span class="T">Error</span>&gt;&gt; { <span class="k">let</span> n: <span class="t">i32</span> = s.parse()?; .. }
+m.get(&amp;k).copied().unwrap_or(<span class="n">0</span>)</pre>
+<pre class="py"><span class="k">try</span>: n = <span class="t">int</span>(s)
+<span class="k">except</span> <span class="T">ValueError</span> <span class="k">as</span> e: ...
+<span class="k">except</span> (<span class="T">A</span>, <span class="T">B</span>): ...
+<span class="k">else</span>: ...  <span class="k">finally</span>: ...
+<span class="k">raise</span> <span class="T">ValueError</span>(<span class="s">"bad"</span>)
+x = d.get(k)   <span class="k">if</span> x <span class="k">is</span> <span class="k">None</span>: ...   x <span class="k">or</span> default
+<span class="k">assert</span> cond, <span class="s">"msg"</span>
+<span class="k">try</span>: a[i] <span class="k">except</span> <span class="T">IndexError</span>: ...</pre>
+</div>
+</section>
+
+<!-- 12 Producer → Multiple Consumers → Sort Results -->
+<section class="row con" id="s12">
+<h2><span class="no">12</span>Producer → Multiple Consumers → Sort Results<em>CONCURRENCY</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">type</span> <span class="T">R</span> <span class="k">struct</span>{ id, val <span class="t">int</span> }
+jobs := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>, <span class="n">100</span>)
+results := <span class="b">make</span>(<span class="k">chan</span> <span class="T">R</span>, <span class="n">100</span>)
+<span class="k">var</span> wg sync.<span class="T">WaitGroup</span>
+<span class="k">for</span> w := <span class="n">0</span>; w &lt; <span class="n">4</span>; w++ {                  <span class="c">// N consumers</span>
+    wg.<span class="T">Add</span>(<span class="n">1</span>)
+    <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> wg.<span class="T">Done</span>()             <span class="c">// 1 job -&gt; 1 worker</span>
+        <span class="k">for</span> j := <span class="k">range</span> jobs { results &lt;- <span class="T">R</span>{j, j * j} }
+    }()
+}
+<span class="k">go</span> <span class="k">func</span>() {                               <span class="c">// 1 producer</span>
+    <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="n">20</span>; i++ { jobs &lt;- i }
+    <span class="b">close</span>(jobs)                           <span class="c">// no more work </span><span class="star">★</span>
+}()
+<span class="k">go</span> <span class="k">func</span>() { wg.<span class="T">Wait</span>(); <span class="b">close</span>(results) }() <span class="c">// after ALL workers </span><span class="star">★</span>
+<span class="k">var</span> all []<span class="T">R</span>
+<span class="k">for</span> r := <span class="k">range</span> results { all = <span class="b">append</span>(all, r) }
+sort.<span class="T">Slice</span>(all, <span class="k">func</span>(i, j <span class="t">int</span>) <span class="t">bool</span> {     <span class="c">// final sort </span><span class="star">★</span>
+    <span class="k">return</span> all[i].id &lt; all[j].id })
+<span class="k">for</span> _, r := <span class="k">range</span> all { fmt.<span class="T">Println</span>(r.id, r.val) }</pre>
+<pre class="rs"><span class="k">use</span> std::sync::{mpsc, <span class="T">Arc</span>, <span class="T">Mutex</span>};  <span class="k">use</span> std::thread;
+<span class="k">let</span> (tx, rx) = mpsc::channel::&lt;<span class="t">i32</span>&gt;();      <span class="c">// jobs</span>
+<span class="k">let</span> rx = <span class="T">Arc</span>::new(<span class="T">Mutex</span>::new(rx));          <span class="c">// 1 rx, shared </span><span class="star">★</span>
+<span class="k">let</span> (rtx, rrx) = mpsc::channel();           <span class="c">// results</span>
+<span class="k">let</span> hs: <span class="T">Vec</span>&lt;_&gt; = (<span class="n">0</span>..<span class="n">4</span>).map(|id| {          <span class="c">// N consumers</span>
+    <span class="k">let</span> (rx, rtx) = (<span class="T">Arc</span>::clone(&amp;rx), rtx.clone());
+    thread::spawn(<span class="k">move</span> || <span class="k">loop</span> {
+        <span class="k">let</span> job = rx.lock().unwrap().recv(); <span class="c">// lock ends at ;</span>
+        <span class="k">match</span> job { <span class="p">Ok</span>(j) =&gt; rtx.send((j, j * j)).unwrap(),
+                    <span class="p">Err</span>(_) =&gt; <span class="k">break</span> }       <span class="c">// closed -&gt; exit</span>
+    })
+}).collect();
+drop(rtx);                                  <span class="c">// workers hold rest</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="n">0</span>..<span class="n">20</span> { tx.send(i).unwrap(); }     <span class="c">// 1 producer</span>
+drop(tx);                                   <span class="c">// close -&gt; stop </span><span class="star">★</span>
+<span class="k">let</span> <span class="k">mut</span> all: <span class="T">Vec</span>&lt;(<span class="t">i32</span>, <span class="t">i32</span>)&gt; = rrx.iter().collect();
+<span class="k">for</span> h <span class="k">in</span> hs { h.join().unwrap(); }
+all.sort_by_key(|&amp;(id, _)| id);             <span class="c">// final sort </span><span class="star">★</span>
+<span class="k">for</span> (id, v) <span class="k">in</span> &amp;all { <span class="b">println!</span>(<span class="s">"{id} {v}"</span>); }</pre>
+<pre class="py"><span class="k">import</span> threading, queue
+<span class="k">from</span> concurrent.futures <span class="k">import</span> <span class="T">ThreadPoolExecutor</span>
+q = queue.<span class="T">Queue</span>()                         <span class="c"># thread-safe </span><span class="star">★</span>
+results = []; lock = threading.<span class="T">Lock</span>()
+<span class="k">def</span> worker():
+    <span class="k">while</span> <span class="k">True</span>:
+        j = q.get()                        <span class="c"># blocks</span>
+        <span class="k">if</span> j <span class="k">is</span> <span class="k">None</span>: <span class="k">break</span>                <span class="c"># sentinel = stop </span><span class="star">★</span>
+        <span class="k">with</span> lock: results.append((j, j * j))
+        q.task_done()
+ts = [threading.<span class="T">Thread</span>(target=worker) <span class="k">for</span> _ <span class="k">in</span> <span class="b">range</span>(<span class="n">4</span>)]
+<span class="k">for</span> t <span class="k">in</span> ts: t.start()
+<span class="k">for</span> i <span class="k">in</span> <span class="b">range</span>(<span class="n">20</span>): q.put(i)              <span class="c"># 1 producer</span>
+<span class="k">for</span> _ <span class="k">in</span> ts: q.put(<span class="k">None</span>)                  <span class="c"># one sentinel per worker</span>
+<span class="k">for</span> t <span class="k">in</span> ts: t.join()
+results.sort(key=<span class="k">lambda</span> r: r[<span class="n">0</span>])          <span class="c"># final sort </span><span class="star">★</span>
+<span class="k">for</span> id_, v <span class="k">in</span> results: <span class="b">print</span>(id_, v)
+<span class="k">with</span> <span class="T">ThreadPoolExecutor</span>(<span class="n">4</span>) <span class="k">as</span> ex:         <span class="c"># simpler; keeps order</span>
+    results = <span class="t">list</span>(ex.<span class="b">map</span>(<span class="k">lambda</span> j: (j, j * j), <span class="b">range</span>(<span class="n">20</span>)))
+<span class="c"># CPU-bound: multiprocessing.Pool(4).map(f, jobs)  (GIL)</span></pre>
+</div>
+</section>
+
+<!-- 13 Heap · Deque · Queue -->
+<section class="row col" id="s13">
+<h2><span class="no">13</span>Heap · Deque · Queue<em>COLLECTIONS</em></h2>
+<div class="tri">
+<pre class="go"><span class="k">type</span> <span class="T">IntHeap</span> []<span class="t">int</span>   <span class="c">// Len Less Swap + Push/Pop(ptr) </span><span class="star">★</span>
+<span class="k">func</span> (h <span class="T">IntHeap</span>) <span class="T">Less</span>(i, j <span class="t">int</span>) <span class="t">bool</span> { <span class="k">return</span> h[i] &lt; h[j] }
+<span class="k">func</span> (h *<span class="T">IntHeap</span>) <span class="T">Push</span>(x <span class="t">any</span>) { *h = <span class="b">append</span>(*h, x.(<span class="t">int</span>)) }
+<span class="k">func</span> (h *<span class="T">IntHeap</span>) <span class="T">Pop</span>() <span class="t">any</span> { o := *h; n := <span class="b">len</span>(o)
+    x := o[n-<span class="n">1</span>]; *h = o[:n-<span class="n">1</span>]; <span class="k">return</span> x }
+h := &amp;<span class="T">IntHeap</span>{}; heap.<span class="T">Init</span>(h); heap.<span class="T">Push</span>(h, <span class="n">3</span>)
+x := heap.<span class="T">Pop</span>(h).(<span class="t">int</span>);  (*h)[<span class="n">0</span>] <span class="c">/* peek */</span>
+q := []<span class="t">int</span>{}; q = <span class="b">append</span>(q, x); x, q = q[<span class="n">0</span>], q[<span class="n">1</span>:]  <span class="c">// queue</span>
+st = <span class="b">append</span>(st, x); x, st = st[<span class="b">len</span>(st)-<span class="n">1</span>], st[:<span class="b">len</span>(st)-<span class="n">1</span>]</pre>
+<pre class="rs"><span class="k">use</span> std::collections::{<span class="T">BinaryHeap</span>, <span class="T">VecDeque</span>}; <span class="k">use</span> std::cmp::<span class="T">Reverse</span>;
+<span class="k">let</span> <span class="k">mut</span> h = <span class="T">BinaryHeap</span>::new();     <span class="c">// MAX-heap</span>
+h.push(x)  h.pop()  h.peek()  h.len()
+h.push(<span class="T">Reverse</span>(x)); <span class="k">if</span> <span class="k">let</span> <span class="p">Some</span>(<span class="T">Reverse</span>(x)) = h.pop() { }  <span class="c">// min</span>
+h.push(<span class="T">Reverse</span>((dist, node)));     <span class="c">// Dijkstra </span><span class="star">★</span>
+<span class="k">let</span> <span class="k">mut</span> q = <span class="T">VecDeque</span>::new();       <span class="c">// BFS</span>
+q.push_back(x)  q.pop_front()  q.push_front(x)  q.front()
+<span class="k">let</span> <span class="k">mut</span> st = <span class="b">vec!</span>[]; st.push(x); st.pop();   <span class="c">// stack</span></pre>
+<pre class="py"><span class="k">import</span> heapq
+h = []; heapq.heappush(h, x); x = heapq.heappop(h); h[<span class="n">0</span>]  <span class="c"># min-heap</span>
+heapq.heappush(h, -x)                      <span class="c"># max-heap trick </span><span class="star">★</span>
+heapq.heappush(h, (dist, node))            <span class="c"># Dijkstra</span>
+heapq.heapify(a)  heapq.nlargest(k, a)
+<span class="k">from</span> collections <span class="k">import</span> deque
+q = deque(); q.append(x); q.popleft(); q.appendleft(x); q[<span class="n">0</span>]
+st = []; st.append(x); st.pop(); st[-<span class="n">1</span>]     <span class="c"># stack</span></pre>
+</div>
+</section>
+
+<!-- 14 Traps · Must Remember -->
+<section class="row alg" id="s14">
+<h2><span class="no">14</span>Traps · Must Remember<em>TRAPS</em></h2>
+<div class="tri">
+<pre class="go">unused <span class="k">var</span>/<span class="k">import</span> = compile <span class="t">error</span>  →  _ = x
+<span class="b">append</span> may not update caller's slice → <span class="k">return</span> it
+<span class="k">map</span> iteration order is random
+closing a channel twice / sending after <span class="b">close</span> = <span class="b">panic</span>
+<span class="p">nil</span> <span class="k">map</span> write panics;  s[a:b] shares memory
+<span class="t">int</span> is <span class="n">64</span>-bit;  x++ is a statement</pre>
+<pre class="rs"> <span class="e">E0502</span> borrow conflict → clone / copy value first
+ <span class="e">E0382</span> <span class="k">use</span> after <span class="k">move</span> → iterate &amp;v, .iter(), .clone()
+<span class="t">usize</span> - <span class="t">usize</span> underflows (panic <span class="k">in</span> debug) → <span class="t">i64</span> / abs_diff
+indexes must be <span class="t">usize</span>;  <span class="k">as</span> casts everywhere
+<span class="T">String</span>[i] not allowed → as_bytes()[i] or chars()
+sort needs <span class="T">Ord</span>: <span class="t">f64</span> → total_cmp / partial_cmp</pre>
+<pre class="py">[[<span class="n">0</span>]*m]*n aliases rows → <span class="t">list</span> comp
+default recursion limit <span class="n">1000</span> → setrecursionlimit
+<span class="b">input</span>() slow → sys.stdin.readline
+a = b aliases lists/dicts → copy()
+<span class="k">is</span> vs ==;  mutable default arg <span class="k">def</span> f(x=[])
+integer division //, true division /; strings immutable</pre>
+</div>
+</section>
+</div>
+</div></main>
+</div>
+</body>
+</html>

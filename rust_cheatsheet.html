@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rust Live-Coding Cheatsheet</title>
+<link rel="stylesheet" href="assets/cheatsheet.css">
+<script src="assets/fit.js" defer></script>
+</head>
+<body>
+<div class="page">
+<header class="top"><span class="badge rust">RUST</span><h1>Live-Coding <span>Cheatsheet</span></h1>
+<p class="tagline">HackerRank-style interviews · syntax, std patterns, I/O, concurrency &amp; JSON · one A3 sheet</p>
+<div class="key">syntax key <code class="k">keyword</code><code class="t">i64</code><code class="T">Type</code><code class="s">"str"</code><code class="b">macro!</code><code class="c">// comment</code><br><span class="star">★</span> use constantly · <b class="tb">E0xxx</b> compiler error · <span class="bar">▌</span> trap / tip</div>
+</header>
+<nav class="nav"><span class="io">I/O <i>01–03</i></span><span class="syn">Syntax <i>04–07</i></span><span class="col">Collections <i>08–15</i></span><span class="typ">Types &amp; Errors <i>16–18</i></span><span class="con">Concurrency <i>19–20</i></span><span class="json">JSON <i>21</i></span><span class="alg">Algorithms <i>22–23</i></span><span class="right">sections numbered <b>01</b>→ in reading order, column by column</span></nav>
+<main class="fit"><div class="cards">
+
+<!-- 01 Fast I/O -->
+<section class="card io" id="s01">
+<h2><span class="no">01</span>Fast I/O <small>read all stdin at once</small><em>I/O</em></h2>
+<pre><span class="k">use</span> std::io::{<span class="k">self</span>, <span class="T">Read</span>, <span class="T">Write</span>, <span class="T">BufRead</span>};
+<span class="k">fn</span> main() {
+    <span class="k">let</span> <span class="k">mut</span> s = <span class="T">String</span>::new();
+    io::stdin().read_to_string(&amp;<span class="k">mut</span> s).unwrap();
+    <span class="k">let</span> <span class="k">mut</span> it = s.split_ascii_whitespace().map(|x| x.parse::&lt;<span class="t">i64</span>&gt;().unwrap());
+    <span class="k">let</span> n = it.next().unwrap() <span class="k">as</span> <span class="t">usize</span>;
+    <span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i64</span>&gt; = it.by_ref().take(n).collect();
+    <span class="c">// buffered output — much faster than println! inside loops </span><span class="star">★</span>
+    <span class="k">let</span> out = io::stdout(); <span class="k">let</span> <span class="k">mut</span> w = io::<span class="T">BufWriter</span>::new(out.lock());
+    <span class="b">writeln!</span>(w, <span class="s">"{} {}"</span>, n, v[<span class="n">0</span>]).unwrap();
+}</pre>
+</section>
+
+<!-- 02 HackerRank Input Patterns -->
+<section class="card io" id="s02">
+<h2><span class="no">02</span>HackerRank Input Patterns <small>line-based stubs</small><em>I/O</em></h2>
+<pre><span class="c">// read_line KEEPS the '\n' and APPENDS → trim, and clear before reuse </span><span class="star">★</span>
+<span class="k">let</span> <span class="k">mut</span> line = <span class="T">String</span>::new();
+io::stdin().read_line(&amp;<span class="k">mut</span> line).unwrap();
+<span class="k">let</span> n: <span class="t">usize</span> = line.trim().parse().unwrap();   line.clear();
+<span class="c">// helper: parse one whole line into Vec&lt;T&gt;</span>
+<span class="k">fn</span> read_vec&lt;<span class="T">T</span>: std::<span class="t">str</span>::<span class="T">FromStr</span>&gt;() -&gt; <span class="T">Vec</span>&lt;<span class="T">T</span>&gt; <span class="k">where</span> <span class="T">T</span>::<span class="p">Err</span>: std::fmt::<span class="T">Debug</span> {
+    <span class="k">let</span> <span class="k">mut</span> s = <span class="T">String</span>::new(); io::stdin().read_line(&amp;<span class="k">mut</span> s).unwrap();
+    s.split_whitespace().map(|x| x.parse().unwrap()).collect()
+}
+<span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i64</span>&gt; = read_vec();   <span class="k">let</span> (a, b) = (v[<span class="n">0</span>], v[<span class="n">1</span>]);   <span class="c">// "a b"</span>
+<span class="c">// line iterator: header "n m", then n rows (int matrix / char grid)</span>
+<span class="k">let</span> stdin = io::stdin();
+<span class="k">let</span> <span class="k">mut</span> lines = stdin.lock().lines().map(|l| l.unwrap());
+<span class="k">let</span> hdr: <span class="T">Vec</span>&lt;<span class="t">usize</span>&gt; = lines.next().unwrap()
+    .split_whitespace().map(|x| x.parse().unwrap()).collect();
+<span class="k">let</span> (n, m) = (hdr[<span class="n">0</span>], hdr[<span class="n">1</span>]);
+<span class="k">let</span> grid: <span class="T">Vec</span>&lt;<span class="T">Vec</span>&lt;<span class="t">i32</span>&gt;&gt; = (<span class="n">0</span>..n).map(|_| lines.next().unwrap()
+    .split_whitespace().map(|x| x.parse().unwrap()).collect()).collect();
+<span class="k">let</span> g: <span class="T">Vec</span>&lt;<span class="T">Vec</span>&lt;<span class="t">u8</span>&gt;&gt; = (<span class="n">0</span>..n)                     <span class="c">// "#..#" rows -&gt; bytes</span>
+    .map(|_| lines.next().unwrap().trim().as_bytes().to_vec()).collect();
+<span class="c">// q command queries: "push 5" / "pop" — slice patterns on the tokens</span>
+<span class="k">for</span> _ <span class="k">in</span> <span class="n">0</span>..q {
+    <span class="k">let</span> l = lines.next().unwrap();  <span class="k">let</span> t: <span class="T">Vec</span>&lt;_&gt; = l.split_whitespace().collect();
+    <span class="k">match</span> t[..] { [<span class="s">"push"</span>, x] =&gt; st.push(x.parse().unwrap()),
+                  [<span class="s">"pop"</span>] =&gt; { st.pop(); }  _ =&gt; {} } }
+<span class="k">for</span> l <span class="k">in</span> lines { <span class="k">if</span> l.trim().is_empty() { <span class="k">continue</span>; } }   <span class="c">// until EOF</span>
+<span class="c">// output: space-joined row · fixed decimals · YES/NO</span>
+<span class="k">let</span> s = v.iter().map(|x| x.to_string()).collect::&lt;<span class="T">Vec</span>&lt;_&gt;&gt;().join(<span class="s">" "</span>);
+<span class="b">println!</span>(<span class="s">"{:.6}"</span>, ans);   <span class="b">println!</span>(<span class="s">"{}"</span>, <span class="k">if</span> ok { <span class="s">"YES"</span> } <span class="k">else</span> { <span class="s">"NO"</span> });</pre>
+<p class="note"><span class="lbl">Traps</span><span class="sans"> Windows input ends in </span><code class="chip">\r\n</code><span class="sans"> → use </span><code class="chip">trim()</code><span class="sans"> . Sums beyond 2³¹ → </span><code class="t chip">i64</code><span class="sans"> . Missing last line → </span><code class="chip">unwrap_or_default()</code><span class="sans"> .</span></p>
+</section>
+
+<!-- 03 format! · Printing -->
+<section class="card io" id="s03">
+<h2><span class="no">03</span>format! · Printing<em>I/O</em></h2>
+<pre><span class="b">println!</span>(<span class="s">"{} {}"</span>, a, b);   <span class="b">println!</span>(<span class="s">"{a} {b}"</span>);   <span class="c">// inline args</span>
+<span class="b">println!</span>(<span class="s">"{:?}"</span>, v);       <span class="b">println!</span>(<span class="s">"{:#?}"</span>, v);  <span class="c">// debug / pretty debug</span>
+<span class="b">println!</span>(<span class="s">"{:5}|{:&lt;5}|{:^5}|{:&gt;5}"</span>, x, x, x, x);    <span class="c">// width / align</span>
+<span class="b">println!</span>(<span class="s">"{:05} {:.3} {:8.2} {:+}"</span>, n, f, f, n);   <span class="c">// pad, precision, sign</span>
+<span class="b">println!</span>(<span class="s">"{:b} {:o} {:x} {:#x} {:e}"</span>, n, n, n, n, f);
+<span class="b">println!</span>(<span class="s">"{:&gt;w$}"</span>, x, w = <span class="n">8</span>);   <span class="b">eprintln!</span>(<span class="s">"stderr"</span>);   <span class="b">dbg!</span>(x); <span class="c">// returns x</span>
+<span class="k">let</span> s = <span class="b">format!</span>(<span class="s">"{}-{}"</span>, a, b);  <span class="k">use</span> std::fmt::<span class="T">Write</span>; <span class="b">write!</span>(s, <span class="s">"{x}"</span>).unwrap();</pre>
+</section>
+
+<!-- 04 Variables · Types · Casting -->
+<section class="card syn" id="s04">
+<h2><span class="no">04</span>Variables · Types · Casting<em>SYNTAX</em></h2>
+<pre><span class="k">let</span> x = <span class="n">5</span>;              <span class="c">// immutable, i32 by default</span>
+<span class="k">let</span> <span class="k">mut</span> y: <span class="t">u64</span> = <span class="n">10</span>;    <span class="k">let</span> z = <span class="n">3.0_f64</span>;   <span class="k">let</span> big = <span class="n">1u64</span> &lt;&lt; <span class="n">40</span>;
+<span class="k">const</span> <span class="T">MAX</span>: <span class="t">usize</span> = <span class="n">1_000_000</span>;   <span class="k">const</span> <span class="T">MOD</span>: <span class="t">i64</span> = <span class="n">1_000_000_007</span>;
+<span class="k">let</span> (a, b) = (<span class="n">1</span>, <span class="s">"hi"</span>); <span class="c">// tuple destructure;   let x = x + 1; // shadowing</span>
+<span class="k">let</span> i = y <span class="k">as</span> <span class="t">i32</span>;       <span class="c">// numeric cast (truncates, never panics)</span>
+<span class="k">let</span> idx = n <span class="k">as</span> <span class="t">usize</span>;   <span class="c">// indexes MUST be usize </span><span class="star">★</span>
+<span class="k">let</span> c = <span class="s">b'a'</span>;  <span class="k">let</span> ch = (c + <span class="n">1</span>) <span class="k">as</span> <span class="t">char</span>;  <span class="k">let</span> d = (ch <span class="k">as</span> <span class="t">u8</span> - <span class="s">b'0'</span>) <span class="k">as</span> <span class="t">usize</span>;
+<span class="k">let</span> k: <span class="t">i32</span> = <span class="s">"42"</span>.parse().unwrap();   <span class="k">let</span> t = <span class="t">u8</span>::try_from(<span class="n">300i32</span>); <span class="c">// Err</span>
+<span class="t">i32</span>::<span class="T">MAX</span>  <span class="t">i64</span>::<span class="T">MIN</span>  <span class="t">usize</span>::<span class="T">MAX</span>  <span class="t">f64</span>::<span class="T">INFINITY</span>  <span class="t">f64</span>::<span class="T">EPSILON</span>
+x.abs() x.pow(<span class="n">3</span>) x.min(y) x.max(y) x.signum() a.abs_diff(b) x.clamp(lo, hi)
+x.rem_euclid(m)   <span class="c">// non-negative modulo </span><span class="star">★</span><span class="c">     (a + b - 1) / b  // ceil div</span>
+x.checked_add(y)  <span class="c">/*Option*/</span>  x.wrapping_mul(y)  x.saturating_sub(y)
+f.sqrt() f.floor() f.ceil() f.round() f.powi(<span class="n">2</span>) f.powf(<span class="n">0.5</span>) (x <span class="k">as</span> <span class="t">f64</span>).log2()</pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> </span><code class="t chip">usize</code><code class="chip"> - </code><code class="t chip">usize</code><span class="sans"> underflow panics in debug. Compute in </span><code class="t chip">i64</code><span class="sans"> then cast, or use </span><code class="chip">abs_diff</code><span class="sans"> / </span><code class="chip">saturating_sub</code><span class="sans chip"> .</span></p>
+</section>
+
+<!-- 05 Control Flow -->
+<section class="card syn" id="s05">
+<h2><span class="no">05</span>Control Flow<em>SYNTAX</em></h2>
+<pre><span class="k">if</span> x &gt; <span class="n">0</span> { } <span class="k">else</span> <span class="k">if</span> x &lt; <span class="n">0</span> { } <span class="k">else</span> { }
+<span class="k">let</span> s = <span class="k">if</span> x &gt; <span class="n">0</span> { <span class="s">"pos"</span> } <span class="k">else</span> { <span class="s">"neg"</span> };   <span class="c">// if is an expression</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="n">0</span>..n { }  <span class="c">/* 0..=n-1 */</span>    <span class="k">for</span> i <span class="k">in</span> (<span class="n">0</span>..n).rev() { }   <span class="c">// reverse</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="n">1</span>..=n { } <span class="c">/* inclusive */</span>  <span class="k">for</span> i <span class="k">in</span> (<span class="n">0</span>..n).step_by(<span class="n">2</span>) { }
+<span class="k">for</span> i <span class="k">in</span> <span class="n">1</span>..=<span class="n">10</span> { }                         <span class="c">// 1..10 inclusive </span><span class="star">★</span><span class="c">  (1..10 stops at 9)</span>
+<span class="k">for</span> (i, v) <span class="k">in</span> arr.iter().enumerate() { }
+<span class="k">for</span> v <span class="k">in</span> &amp;vec { }  <span class="c">/* borrow </span><span class="star">★</span><span class="c"> */</span>   <span class="k">for</span> v <span class="k">in</span> &amp;<span class="k">mut</span> vec { *v += <span class="n">1</span>; }
+<span class="k">while</span> <span class="k">let</span> <span class="p">Some</span>(x) = stack.pop() { }
+<span class="k">let</span> r = <span class="k">loop</span> { <span class="k">break</span> <span class="n">42</span>; };                  <span class="c">// loop returns a value</span>
+<span class="w">'outer</span>: <span class="k">for</span> i <span class="k">in</span> <span class="n">0</span>..n { <span class="k">for</span> j <span class="k">in</span> <span class="n">0</span>..m { <span class="k">if</span> bad { <span class="k">continue</span> <span class="w">'outer</span>; } } }</pre>
+</section>
+
+<!-- 06 match · Pattern Matching -->
+<section class="card syn" id="s06">
+<h2><span class="no">06</span>match · Pattern Matching<em>SYNTAX</em></h2>
+<pre><span class="k">match</span> x {
+    <span class="n">0</span> =&gt; <span class="s">"zero"</span>,   <span class="n">1</span> | <span class="n">2</span> =&gt; <span class="s">"small"</span>,   <span class="n">3</span>..=<span class="n">9</span> =&gt; <span class="s">"mid"</span>,
+    n <span class="k">if</span> n &lt; <span class="n">0</span> =&gt; <span class="s">"neg"</span>,               <span class="c">// guard</span>
+    _ =&gt; <span class="s">"big"</span>,
+}
+<span class="k">match</span> (a, b) { (<span class="n">0</span>, _) =&gt; .., (_, <span class="n">0</span>) =&gt; .., _ =&gt; .. }
+<span class="k">match</span> opt { <span class="p">Some</span>(v) <span class="k">if</span> v &gt; <span class="n">3</span> =&gt; .., <span class="p">Some</span>(v) =&gt; .., <span class="p">None</span> =&gt; .. }
+<span class="k">match</span> s.as_str() { <span class="s">"add"</span> =&gt; .., <span class="s">"sub"</span> =&gt; .., _ =&gt; .. }
+<span class="k">match</span> slice { [] =&gt; .., [x] =&gt; .., [first, .., last] =&gt; .., [h, rest @ ..] =&gt; .. }
+<span class="k">if</span> <span class="k">let</span> <span class="p">Some</span>(v) = map.get(&amp;k) { }
+<span class="k">let</span> <span class="p">Some</span>(v) = opt <span class="k">else</span> { <span class="k">return</span>; };   <span class="c">// let-else </span><span class="star">★</span>
+<span class="k">let</span> <span class="T">Point</span> { x, y } = p;   <span class="k">let</span> ok = <span class="b">matches!</span>(x, <span class="p">Some</span>(<span class="n">1</span>..=<span class="n">5</span>));</pre>
+</section>
+
+<!-- 07 Functions · Closures · Generics -->
+<section class="card syn" id="s07">
+<h2><span class="no">07</span>Functions · Closures · Generics<em>SYNTAX</em></h2>
+<pre><span class="k">fn</span> add(a: <span class="t">i32</span>, b: <span class="t">i32</span>) -&gt; <span class="t">i32</span> { a + b }       <span class="c">// last expr = return value</span>
+<span class="k">fn</span> sum(v: &amp;[<span class="t">i64</span>]) -&gt; <span class="t">i64</span> { v.iter().sum() }   <span class="c">// take slices </span><span class="star">★</span>
+<span class="k">fn</span> push(v: &amp;<span class="k">mut</span> <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt;) { v.push(<span class="n">1</span>); }
+<span class="k">fn</span> big&lt;<span class="T">T</span>: <span class="T">Ord</span> + <span class="T">Copy</span>&gt;(a: <span class="T">T</span>, b: <span class="T">T</span>) -&gt; <span class="T">T</span> { <span class="k">if</span> a &gt; b { a } <span class="k">else</span> { b } }
+<span class="k">fn</span> f&lt;<span class="T">T</span>&gt;(x: <span class="T">T</span>) <span class="k">where</span> <span class="T">T</span>: <span class="T">Clone</span> + std::fmt::<span class="T">Debug</span> { }
+<span class="k">let</span> sq = |x: <span class="t">i32</span>| x * x;   <span class="k">let</span> add = |a, b| a + b;   <span class="c">// types inferred</span>
+<span class="k">let</span> <span class="k">mut</span> cnt = <span class="n">0</span>; <span class="k">let</span> <span class="k">mut</span> inc = || cnt += <span class="n">1</span>;   <span class="c">// mutates capture -&gt; mut</span>
+<span class="k">let</span> f = <span class="k">move</span> |x| x + offset;                  <span class="c">// take ownership</span>
+<span class="k">fn</span> make() -&gt; <span class="k">impl</span> <span class="T">Fn</span>(<span class="t">i32</span>) -&gt; <span class="t">i32</span> { |x| x + <span class="n">1</span> }
+<span class="k">let</span> boxed: <span class="T">Box</span>&lt;<span class="k">dyn</span> <span class="T">Fn</span>(<span class="t">i32</span>) -&gt; <span class="t">i32</span>&gt; = <span class="T">Box</span>::new(sq);
+<span class="c">// closures can't recurse -&gt; use a fn (nested fn is OK)</span>
+<span class="k">fn</span> dfs(u: <span class="t">usize</span>, g: &amp;[<span class="T">Vec</span>&lt;<span class="t">usize</span>&gt;], vis: &amp;<span class="k">mut</span> [<span class="t">bool</span>]) {
+    vis[u] = <span class="k">true</span>; <span class="k">for</span> &amp;v <span class="k">in</span> &amp;g[u] { <span class="k">if</span> !vis[v] { dfs(v, g, vis); } }
+}</pre>
+</section>
+
+<!-- 08 Sorting · Comparing -->
+<section class="card col" id="s08">
+<h2><span class="no">08</span>Sorting · Comparing<em>COLLECTIONS</em></h2>
+<pre>v.sort();  v.sort_unstable();  v.sort_by(|a, b| b.cmp(a));   <span class="c">// descending</span>
+v.sort_by_key(|p| p.<span class="n">1</span>);   v.sort_by_key(|&amp;x| <span class="T">Reverse</span>(x));
+v.sort_by(|a, b| b.<span class="n">1</span>.cmp(&amp;a.<span class="n">1</span>).then(a.<span class="n">0</span>.cmp(&amp;b.<span class="n">0</span>)));   <span class="c">// score desc, name asc </span><span class="star">★</span>
+v.sort_by_key(|p| (<span class="T">Reverse</span>(p.<span class="n">1</span>), p.<span class="n">0</span>.clone()));        <span class="c">// same, as key tuple</span>
+f.sort_by(|a, b| a.total_cmp(b));       <span class="c">// f64 sort </span><span class="star">★</span>
+<span class="k">let</span> <span class="k">mut</span> idx: <span class="T">Vec</span>&lt;<span class="t">usize</span>&gt; = (<span class="n">0</span>..n).collect();  idx.sort_by_key(|&amp;i| a[i]); <span class="c">// argsort</span>
+v.select_nth_unstable(k);               <span class="c">// k-th smallest, O(n)</span>
+a.cmp(&amp;b) -&gt; <span class="T">Ordering</span>::{<span class="T">Less</span>, <span class="T">Equal</span>, <span class="T">Greater</span>}   .reverse()   .then_with(|| ..)
+<span class="s">"abc"</span> &lt; <span class="s">"abd"</span>   (<span class="n">1</span>, <span class="s">'a'</span>) &lt; (<span class="n">1</span>, <span class="s">'b'</span>)   <span class="b">vec!</span>[<span class="n">1</span>, <span class="n">2</span>] &lt; <span class="b">vec!</span>[<span class="n">1</span>, <span class="n">3</span>]   <span class="c">// lexicographic</span></pre>
+</section>
+
+<!-- 09 HashMap · HashSet · BTreeMap -->
+<section class="card col" id="s09">
+<h2><span class="no">09</span>HashMap · HashSet · BTreeMap<em>COLLECTIONS</em></h2>
+<pre><span class="k">use</span> std::collections::{<span class="T">HashMap</span>, <span class="T">HashSet</span>, <span class="T">BTreeMap</span>, <span class="T">BTreeSet</span>};
+<span class="k">let</span> <span class="k">mut</span> m: <span class="T">HashMap</span>&lt;<span class="T">String</span>, <span class="t">i32</span>&gt; = <span class="T">HashMap</span>::new();
+m.insert(k, v) <span class="c">/*old: Option*/</span>  m.get(&amp;k) <span class="c">/*Option&lt;&amp;V&gt;*/</span>  m[&amp;k] <span class="c">/*panics*/</span>
+m.get_mut(&amp;k)  m.contains_key(&amp;k)  m.remove(&amp;k)  m.len()
+*m.entry(k).or_insert(<span class="n">0</span>) += <span class="n">1</span>;                 <span class="c">// counting </span><span class="star">★</span>
+m.entry(k).or_default().push(x);               <span class="c">// adjacency list </span><span class="star">★</span>
+m.entry(k).and_modify(|v| *v += <span class="n">1</span>).or_insert(<span class="n">1</span>);
+<span class="k">for</span> (k, v) <span class="k">in</span> &amp;m { }    <span class="k">for</span> (k, v) <span class="k">in</span> m.iter_mut() { *v = <span class="n">0</span>; }
+m.keys()  m.values()  m.values_mut()   <span class="k">let</span> <span class="k">mut</span> kv: <span class="T">Vec</span>&lt;_&gt; = m.iter().collect();
+<span class="k">let</span> m: <span class="T">HashMap</span>&lt;_, _&gt; = v.iter().map(|x| (x.id, x)).collect();
+<span class="k">let</span> <span class="k">mut</span> s = <span class="T">HashSet</span>::new();   s.insert(x) <span class="c">/* bool */</span>  s.contains(&amp;x)  s.remove(&amp;x)
+s.union(&amp;t)  s.intersection(&amp;t)  s.difference(&amp;t)       <span class="c">// iterators</span>
+<span class="c">// BTreeMap / BTreeSet: sorted keys, range queries O(log n)</span>
+b.first_key_value()  b.last_key_value()  b.pop_first()  b.pop_last()
+b.range(k..).next() <span class="c">/* lower_bound */</span>   b.range(..=k).next_back() <span class="c">/* &lt;= k */</span></pre>
+<p class="note"><span class="lbl">Keys</span><span class="sans"> HashMap: </span><code class="T chip">Eq</code><code class="chip"> + </code><code class="T chip">Hash</code><span class="sans"> ; BTreeMap: </span><code class="T chip">Ord</code><span class="sans"> . </span><code class="t chip">f64</code><span class="sans"> can't be a key; tuples / </span><code class="T chip">Vec</code><span class="sans"> / </span><code class="T chip">String</code><span class="sans"> can.</span></p>
+</section>
+
+<!-- 10 Iterators: Adapters · Consumers · fold -->
+<section class="card col" id="s10">
+<h2><span class="no">10</span>Iterators: Adapters · Consumers · fold <small>자주 쓰는 것</small><em>COLLECTIONS</em></h2>
+<pre><span class="sans hd">어댑터 Adapters — lazy: 새 iterator 반환, 끝에 소비자가 있어야 실행됨</span>
+  .map(|x| x * <span class="n">2</span>)                                        <span class="sans dim">map — </span> <span class="sans dim">각 원소 변환</span>
+  .filter(|&amp;&amp;x| x &gt; <span class="n">0</span>)                                   <span class="sans dim">filter — 조건 맞는 것만</span>
+  .filter_map(|t| t.parse::&lt;<span class="t">i32</span>&gt;().ok())                 <span class="sans dim">filter_map — 파싱 / Option 걸러내기</span>
+  .enumerate() <span class="c">// (i, x)</span>                                 <span class="sans dim">enumerate — 인덱스가 필요할 때</span>
+  a.iter().zip(&amp;b) <span class="c">// (x, y)</span>                             <span class="sans dim">zip — 두 시퀀스를 같이 순회</span>
+  .cloned() .copied()                                    <span class="sans dim">cloned / copied — 참조(&amp;T) → 값(T)</span>
+  .take(n) .skip(n) .step_by(k)                          <span class="sans dim">일부만 쓸 때</span>
+  .rev() .chain(b) .flat_map(f) .flatten()               <span class="sans dim">뒤집기 · 잇기 · 펼치기</span>
+  .take_while(p) .skip_while(p) .peekable()              <span class="sans dim">조건까지 · 미리보기</span>
+  .scan(<span class="n">0</span>, |s, &amp;x| { *s += x; <span class="p">Some</span>(*s) })                <span class="sans dim">누적 중간값 (prefix sum)</span>
+<span class="sans hd">소비자 Consumers — eager: 값 하나 반환, 여기서 실제로 실행</span>
+  .sum::&lt;<span class="t">i64</span>&gt;() .count() .product()                      <span class="sans dim">합계, 개수, 곱</span>
+  .any(|&amp;x| x &lt; <span class="n">0</span>) .all(|&amp;x| x &gt; <span class="n">0</span>)                      <span class="sans dim">조건 검사 → bool</span>
+  .find(|&amp;&amp;x| x &gt; <span class="n">10</span>) .position(|&amp;x| x == t)             <span class="sans dim">첫 일치 → Option</span>
+  .min() .max() .max_by_key(|p| p.<span class="n">1</span>)                     <span class="sans dim">최소 / 최대 → Option</span>
+  .collect::&lt;<span class="T">Vec</span>&lt;_&gt;&gt;() .unzip() .partition(p)            <span class="sans dim">모으기 / 둘로 나누기</span>
+  .last() .nth(k) .for_each(|x| ..)                      <span class="sans dim">마지막 · k번째 · 부수효과</span>
+<span class="sans hd" style="--w:23">fold — 모든 소비자의 일반형: </span><span class="hd">fold(init, |acc, x| new_acc)</span>
+v.iter().fold(<span class="n">0</span>, |acc, &amp;x| acc + x)                   <span class="c">// = sum</span>
+v.iter().fold(<span class="t">i64</span>::<span class="T">MIN</span>, |m, &amp;x| m.max(x))             <span class="c">// = max</span>
+v.iter().fold((<span class="n">0</span>, <span class="n">0</span>), |(e, o), &amp;x| <span class="k">if</span> x % <span class="n">2</span> == <span class="n">0</span> {(e+<span class="n">1</span>, o)} <span class="k">else</span> {(e, o+<span class="n">1</span>)})
+s.bytes().fold(<span class="n">0u64</span>, |h, b| (h * <span class="n">31</span> + b <span class="k">as</span> <span class="t">u64</span>) % <span class="T">MOD</span>) <span class="c">// rolling hash</span>
+v.iter().try_fold(<span class="n">0i32</span>, |acc, &amp;x| acc.checked_add(x)) <span class="c">// None on overflow</span>
+v.into_iter().reduce(|a, b| a.max(b))                 <span class="c">// no init -&gt; Option</span>
+<span class="sans hd">라이브 코딩 관용구 Live-coding idioms</span>
+<span class="k">let</span> (i, &amp;mx) = v.iter().enumerate().max_by_key(|&amp;(_, &amp;x)| x).unwrap(); <span class="c">// argmax</span>
+<span class="k">let</span> ans: <span class="t">i64</span> = s.split_whitespace().filter_map(|t| t.parse::&lt;<span class="t">i64</span>&gt;().ok())
+    .filter(|&amp;x| x % <span class="n">2</span> == <span class="n">0</span>).map(|x| x * x).sum();   <span class="c">// adapters... -&gt; consumer</span>
+<span class="k">let</span> freq = s.chars().fold(<span class="T">HashMap</span>::new(), |<span class="k">mut</span> m, c| {
+    *m.entry(c).or_insert(<span class="n">0</span>) += <span class="n">1</span>; m });           <span class="c">// char counts</span>
+<span class="k">let</span> inc = v.windows(<span class="n">2</span>).all(|w| w[<span class="n">0</span>] &lt;= w[<span class="n">1</span>]);        <span class="c">// sorted?</span>
+<span class="k">let</span> diffs: <span class="T">Vec</span>&lt;<span class="t">i64</span>&gt; = v.windows(<span class="n">2</span>).map(|w| w[<span class="n">1</span>] - w[<span class="n">0</span>]).collect();
+<span class="k">let</span> pairs = (<span class="n">0</span>..n).flat_map(|i| (i + <span class="n">1</span>..n).map(<span class="k">move</span> |j| (i, j)));  <span class="c">// all i&lt;j</span>
+<span class="k">let</span> rows = grid.iter().map(|r| r.iter().map(|x| x.to_string())
+    .collect::&lt;<span class="T">Vec</span>&lt;_&gt;&gt;().join(<span class="s">" "</span>)).collect::&lt;<span class="T">Vec</span>&lt;_&gt;&gt;().join(<span class="s">"\n"</span>);
+<span class="k">let</span> <span class="k">mut</span> it = v.iter().peekable();                    <span class="c">// run-length grouping</span>
+<span class="k">while</span> <span class="k">let</span> <span class="p">Some</span>(&amp;x) = it.next() { <span class="k">let</span> <span class="k">mut</span> c = <span class="n">1</span>;
+    <span class="k">while</span> it.next_if_eq(&amp;&amp;x).is_some() { c += <span class="n">1</span>; } }
+<span class="k">let</span> total: <span class="t">i64</span> = v.iter().map(|&amp;x| x <span class="k">as</span> <span class="t">i64</span>).sum();  <span class="c">// widen before summing </span><span class="star">★</span></pre>
+</section>
+
+<!-- 11 iter · iter_mut · into_iter · Sources -->
+<section class="card col" id="s11">
+<h2><span class="no">11</span>iter · iter_mut · into_iter · Sources <small>빌림 vs 소유</small><em>COLLECTIONS</em></h2>
+<pre>  v.iter() <span class="k">for</span> x <span class="k">in</span> &amp;v                                   <span class="sans dim">&amp;T — 읽기만, v 계속 사용 가능</span>
+  v.iter_mut() <span class="k">for</span> x <span class="k">in</span> &amp;<span class="k">mut</span> v                           <span class="sans dim">&amp;mut T — 제자리</span> <span class="sans dim"> 수정 (*x += 1)</span>
+  v.into_iter() <span class="k">for</span> x <span class="k">in</span> v                               <span class="sans dim">T — 소유권 이동, 이후 v 사용 불가</span>
+<span class="sans hd">into_iter: 값을 꺼내 새 컬렉션으로 옮길 때 (clone 없음) ★</span>
+<span class="k">let</span> names = <span class="b">vec!</span>[<span class="s">"apple"</span>.to_string(), <span class="s">"pear"</span>.to_string(), <span class="s">"kiwi"</span>.to_string()];
+<span class="k">let</span> prices = <span class="b">vec!</span>[<span class="n">100</span>, <span class="n">200</span>, <span class="n">150</span>];
+<span class="k">let</span> result: <span class="T">Vec</span>&lt;(<span class="T">String</span>, <span class="t">i32</span>)&gt; = names.into_iter().zip(prices).collect();
+<span class="c">// [("apple", 100), ("pear", 200), ("kiwi", 150)]  names·prices </span><span class="sans c">이동됨</span>
+<span class="c">// </span><span class="sans c" style="--w:5">원본을</span><span class="c"> </span><span class="sans c" style="--w:8">유지하려면</span><span class="c">: names.iter().zip(&amp;prices) -&gt; Vec&lt;(&amp;String, &amp;i32)&gt;</span>
+<span class="k">let</span> (ns, ps): (<span class="T">Vec</span>&lt;<span class="T">String</span>&gt;, <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt;) = result.into_iter().unzip(); <span class="c">// </span><span class="sans c">분리</span>
+<span class="k">let</span> m: <span class="T">HashMap</span>&lt;<span class="T">String</span>, <span class="t">i32</span>&gt; = ns.into_iter().zip(ps).collect();       <span class="c">// -&gt; map</span>
+<span class="k">for</span> (name, price) <span class="k">in</span> &amp;m { }         <span class="c">// &amp;m: (&amp;K, &amp;V) </span><span class="sans c">빌림</span>
+<span class="k">for</span> (name, price) <span class="k">in</span> m { }          <span class="c">// HashMap</span><span class="sans c" style="--w:2">도</span><span class="c"> into_iter: (K, V) </span><span class="sans c">소유</span></pre>
+<p class="note"><span class="sans s">규칙</span><span class="sans"> </span><code class="chip">zip(b)</code><span class="sans chip"> ·</span><code class="chip"> extend(b)</code><span class="sans chip"> ·</span><code class="s k0 chip"> for</code><code class="chip"> x </code><code class="s k0 chip">in</code><code class="chip"> b</code><span class="sans"> 는 </span><code class="chip">b.into_iter()</code><span class="sans"> 를 자동 호출 → </span><code class="T chip">Vec</code><span class="sans"> 을 넘기면 이동, </span><code class="chip">&amp;v</code><span class="sans"> 를 넘기면 빌림. </span><code class="chip">(&amp;v).into_iter()</code><span class="sans"> =</span><code class="chip"> v.iter()</code><span class="sans"> . 배열 </span><code class="chip">[</code><code class="T chip">T</code><code class="chip">; </code><code class="T chip">N</code><code class="chip">]</code><span class="sans"> 도 2021부터 값으로 순회.</span></p>
+<pre><span class="sans hd">Sources · collect</span>
+(<span class="n">0</span>..n)  (<span class="n">0</span>..n).rev()  (a..=b).step_by(<span class="n">2</span>)  s.chars()  s.bytes()  m.iter()
+.collect::&lt;<span class="T">String</span>&gt;()  ::&lt;<span class="T">HashSet</span>&lt;_&gt;&gt;()  ::&lt;<span class="T">HashMap</span>&lt;_,_&gt;&gt;()  ::&lt;<span class="T">Result</span>&lt;<span class="T">Vec</span>&lt;_&gt;,_&gt;&gt;()
+std::iter::repeat(<span class="n">0</span>).take(n)   std::iter::once(x)   std::iter::from_fn(|| ..)
+std::iter::successors(<span class="p">Some</span>(<span class="n">1</span>), |&amp;x| <span class="p">Some</span>(x * <span class="n">2</span>))     <span class="c">// 1, 2, 4, 8, ...</span></pre>
+<p class="note"><span class="lbl">Tips</span><span class="sans"> </span><code class="chip">|&amp;x|</code><span class="sans"> strips one reference (</span><code class="chip"> |&amp;&amp;x|</code><span class="sans"> in </span><code class="chip">filter</code><span class="sans"> on </span><code class="chip">.iter()</code><span class="sans"> ). An adapter chain with no consumer does nothing — the compiler warns </span><code class="chip">unused must be used</code><span class="sans chip"> .</span></p>
+</section>
+
+<!-- 12 Vec · Slices -->
+<section class="card col" id="s12">
+<h2><span class="no">12</span>Vec · Slices<em>COLLECTIONS</em></h2>
+<pre><span class="k">let</span> <span class="k">mut</span> v: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = <span class="T">Vec</span>::new();   <span class="k">let</span> v = <span class="b">vec!</span>[<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>];   <span class="k">let</span> v = <span class="b">vec!</span>[<span class="n">0</span>; n];
+<span class="k">let</span> g = <span class="b">vec!</span>[<span class="b">vec!</span>[<span class="n">0</span>; m]; n];        <span class="c">// 2D grid n x m </span><span class="star">★</span>
+<span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = (<span class="n">1</span>..=<span class="n">5</span>).collect();   <span class="k">let</span> v = <span class="T">Vec</span>::with_capacity(n);
+v.push(x)  v.pop()<span class="c">/*Option*/</span>  v.insert(i, x)  v.remove(i)  v.swap_remove(i)
+v.len()  v.is_empty()  v.clear()  v.truncate(k)  v.resize(n, <span class="n">0</span>)
+v.first()  v.last()  v[i]  v.get(i)<span class="c">/*Option, safe*/</span>  v.swap(i, j)
+v.reverse()  v.contains(&amp;x)  v.iter().position(|&amp;e| e == x)
+v.dedup()  v.retain(|&amp;x| x &gt; <span class="n">0</span>)  v.fill(<span class="n">0</span>)  v.rotate_left(k)  v.drain(..k)
+v.binary_search(&amp;x)            <span class="c">// Ok(i) / Err(insert_pos)</span>
+v.partition_point(|&amp;x| x &lt; t)  <span class="c">// lower_bound </span><span class="star">★</span>
+&amp;v[<span class="n">1</span>..<span class="n">3</span>]  &amp;v[..k]  &amp;v[k..]  v.split_at(k)  v.windows(<span class="n">2</span>)  v.chunks(<span class="n">3</span>)
+<span class="k">let</span> (l, r) = v.split_at_mut(mid);   <span class="c">// two &amp;mut halves</span></pre>
+</section>
+
+<!-- 13 String · &str · char -->
+<section class="card col" id="s13">
+<h2><span class="no">13</span>String · &amp;str · char<em>COLLECTIONS</em></h2>
+<pre><span class="k">let</span> s = <span class="T">String</span>::from(<span class="s">"abc"</span>);   <span class="k">let</span> s = <span class="s">"abc"</span>.to_string();   <span class="k">let</span> t: &amp;<span class="t">str</span> = &amp;s;
+<span class="k">let</span> t = &amp;s[<span class="n">1</span>..<span class="n">3</span>];   <span class="c">// BYTE index!     s.len() /* bytes */   s.chars().count()</span>
+s.push(<span class="s">'x'</span>)  s.push_str(<span class="s">"yz"</span>)  s.pop()  s.insert(<span class="n">0</span>, <span class="s">'a'</span>)  <span class="b">format!</span>(<span class="s">"{s}{t}"</span>)
+s.as_bytes()  <span class="c">// &amp;[u8], O(1) indexing </span><span class="star">★</span>
+<span class="k">let</span> cs: <span class="T">Vec</span>&lt;<span class="t">char</span>&gt; = s.chars().collect();   cs.iter().collect::&lt;<span class="T">String</span>&gt;()
+s.chars().rev().collect::&lt;<span class="T">String</span>&gt;()   <span class="T">String</span>::from_utf8(bytes).unwrap()
+s.trim()  .to_uppercase()  .to_lowercase()  .lines()  .split(<span class="s">','</span>)
+s.split_whitespace()   s.splitn(<span class="n">2</span>, <span class="s">':'</span>)   s.split_once(<span class="s">'='</span>)  <span class="c">// Option&lt;(&amp;str,&amp;str)&gt;</span>
+s.starts_with(<span class="s">"ab"</span>) .ends_with() .contains() .find(<span class="s">"b"</span>)  <span class="c">/* Option&lt;usize&gt; */</span>
+s.replace(<span class="s">"a"</span>, <span class="s">"b"</span>)  .repeat(<span class="n">3</span>)  .is_empty()  .chars().nth(i)
+s.parse::&lt;<span class="t">i32</span>&gt;().unwrap()   n.to_string()
+c.is_ascii_digit()  .is_alphabetic()  .is_alphanumeric()  .is_whitespace()
+c.is_ascii_lowercase()  .to_ascii_uppercase()  c.to_digit(<span class="n">10</span>)<span class="c">/*Option*/</span>
+(<span class="s">b'a'</span> + i <span class="k">as</span> <span class="t">u8</span>) <span class="k">as</span> <span class="t">char</span>    (c <span class="k">as</span> <span class="t">u8</span> - <span class="s">b'a'</span>) <span class="k">as</span> <span class="t">usize</span>    <span class="t">char</span>::from_digit(d, <span class="n">10</span>)</pre>
+</section>
+
+<!-- 14 Array ↔ Vec · Conversion · Concat -->
+<section class="card col" id="s14">
+<h2><span class="no">14</span>Array ↔ Vec · Conversion · Concat<em>COLLECTIONS</em></h2>
+<pre><span class="k">let</span> a = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>];                <span class="c">// [i32; 3]: stack, fixed length</span>
+<span class="k">let</span> cnt = [<span class="n">0usize</span>; <span class="n">26</span>];           <span class="c">// letter counts: cnt[(c - b'a') as usize] </span><span class="star">★</span>
+<span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = a.to_vec();     <span class="c">// array / slice -&gt; Vec (clone)</span>
+<span class="k">let</span> v = <span class="T">Vec</span>::from(a);   <span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = a.into();   <span class="c">// also into_iter().collect()</span>
+<span class="k">let</span> s: &amp;[<span class="t">i32</span>] = &amp;a;    <span class="k">let</span> s = &amp;v[..];    <span class="k">let</span> s = v.as_slice();
+<span class="k">let</span> arr: [<span class="t">i32</span>; <span class="n">3</span>] = v.try_into().unwrap();       <span class="c">// Vec -&gt; array (len must match)</span>
+<span class="k">let</span> arr: [<span class="t">i32</span>; <span class="n">3</span>] = v[..<span class="n">3</span>].try_into().unwrap();  <span class="c">// slice -&gt; array (copy)</span>
+<span class="k">let</span> sq: [<span class="t">usize</span>; <span class="n">5</span>] = std::array::from_fn(|i| i * i);   <span class="k">let</span> b = a.map(|x| x * <span class="n">2</span>);
+<span class="sans hd">이어붙이기 Concat — 원본 이동(move) vs 유지(keep)</span>
+<span class="k">let</span> c = a + &amp;b;                     <span class="c">// String: a </span><span class="sans c" style="--w:3">이동</span><span class="c">, b </span><span class="sans c">유지</span>
+<span class="k">let</span> c = <span class="b">format!</span>(<span class="s">"{a}{b}"</span>);          <span class="c">// String: </span><span class="sans c" style="--w:2">둘</span><span class="c"> </span><span class="sans c" style="--w:2">다</span><span class="c"> </span><span class="sans c" style="--w:3">유지</span><span class="c"> </span><span class="star">★</span>
+a.push_str(&amp;b);                     <span class="c">// String: a</span><span class="sans c" style="--w:2">에</span><span class="c"> </span><span class="sans c" style="--w:5">덧붙임</span><span class="c">, b </span><span class="sans c">유지</span>
+a.extend(b);                        <span class="c">// Vec: a</span><span class="sans c" style="--w:2">에</span><span class="c"> </span><span class="sans c" style="--w:5">덧붙임</span><span class="c">, b </span><span class="sans c">이동</span>
+a.extend_from_slice(&amp;b);            <span class="c">// Vec: a</span><span class="sans c" style="--w:2">에</span><span class="c"> </span><span class="sans c" style="--w:5">덧붙임</span><span class="c">, b </span><span class="sans c">유지</span>
+a.append(&amp;<span class="k">mut</span> b);                   <span class="c">// Vec: </span><span class="sans c" style="--w:5">원소만</span><span class="c"> </span><span class="sans c" style="--w:3">옮김</span><span class="c">, b</span><span class="sans c" style="--w:2">는</span><span class="c"> </span><span class="sans c" style="--w:2">빈</span><span class="c"> Vec</span>
+<span class="k">let</span> c = [a, b].concat();            <span class="c">// </span><span class="sans c" style="--w:2">새</span><span class="c"> Vec, a·b </span><span class="sans c">이동</span>
+<span class="k">let</span> c = [&amp;a[..], &amp;b[..]].concat();  <span class="c">// </span><span class="sans c" style="--w:2">새</span><span class="c"> Vec, </span><span class="sans c" style="--w:2">둘</span><span class="c"> </span><span class="sans c" style="--w:2">다</span><span class="c"> </span><span class="sans c" style="--w:3">유지</span><span class="c"> </span><span class="star">★</span>
+<span class="k">let</span> c: <span class="T">Vec</span>&lt;_&gt; = a.iter().chain(&amp;b).cloned().collect();   <span class="c">// </span><span class="sans c">둘</span><span class="c"> </span><span class="sans c">다</span><span class="c"> </span><span class="sans c">유지</span>
+<span class="k">let</span> flat: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = grid.concat(); <span class="c">// Vec&lt;Vec&lt;T&gt;&gt; -&gt; Vec&lt;T&gt; (or .flatten())</span>
+<span class="k">let</span> s = words.join(<span class="s">" "</span>);            <span class="c">// Vec&lt;String&gt; / [&amp;str] -&gt; String</span>
+v.splice(<span class="n">1</span>..<span class="n">1</span>, [<span class="n">7</span>, <span class="n">8</span>]); <span class="c">/* insert many */</span>  <span class="k">let</span> r = [<span class="n">1</span>, <span class="n">2</span>].repeat(<span class="n">3</span>); <span class="c">// 1,2,1,2,..</span>
+<span class="k">let</span> s: <span class="T">String</span> = chars.iter().collect();   <span class="k">let</span> bytes: <span class="T">Vec</span>&lt;<span class="t">u8</span>&gt; = s.into_bytes();</pre>
+</section>
+
+<!-- 15 VecDeque · BinaryHeap · Reverse -->
+<section class="card col" id="s15">
+<h2><span class="no">15</span>VecDeque · BinaryHeap · Reverse<em>COLLECTIONS</em></h2>
+<pre><span class="k">use</span> std::collections::{<span class="T">VecDeque</span>, <span class="T">BinaryHeap</span>};   <span class="k">use</span> std::cmp::<span class="T">Reverse</span>;
+<span class="k">let</span> <span class="k">mut</span> q = <span class="T">VecDeque</span>::new();       <span class="c">// queue / deque (BFS)</span>
+q.push_back(x)  q.push_front(x)  q.pop_front()  q.pop_back()  q.front()  q[i]
+<span class="k">let</span> <span class="k">mut</span> h = <span class="T">BinaryHeap</span>::new();     <span class="c">// MAX-heap</span>
+h.push(x)  h.pop()  h.peek()  h.len()  h.into_sorted_vec()
+h.push(<span class="T">Reverse</span>(x));  <span class="k">if</span> <span class="k">let</span> <span class="p">Some</span>(<span class="T">Reverse</span>(x)) = h.pop() { }   <span class="c">// min-heap</span>
+h.push(<span class="T">Reverse</span>((dist, node)));     <span class="c">// Dijkstra </span><span class="star">★</span>
+<span class="d">#[derive(PartialEq, Eq)]</span> <span class="k">struct</span> <span class="T">St</span> { cost: <span class="t">i64</span>, id: <span class="t">usize</span> }  <span class="c">// custom order</span>
+<span class="k">impl</span> <span class="T">Ord</span> <span class="k">for</span> <span class="T">St</span> { <span class="k">fn</span> cmp(&amp;<span class="k">self</span>, o: &amp;<span class="k">Self</span>) -&gt; std::cmp::<span class="T">Ordering</span> {
+    o.cost.cmp(&amp;<span class="k">self</span>.cost).then_with(|| <span class="k">self</span>.id.cmp(&amp;o.id)) } } <span class="c">// reversed = min</span>
+<span class="k">impl</span> <span class="T">PartialOrd</span> <span class="k">for</span> <span class="T">St</span> { <span class="k">fn</span> partial_cmp(&amp;<span class="k">self</span>, o: &amp;<span class="k">Self</span>)
+    -&gt; <span class="T">Option</span>&lt;std::cmp::<span class="T">Ordering</span>&gt; { <span class="p">Some</span>(<span class="k">self</span>.cmp(o)) } }</pre>
+</section>
+
+<!-- 16 Struct · Enum · impl · Trait -->
+<section class="card typ" id="s16">
+<h2><span class="no">16</span>Struct · Enum · impl · Trait<em>TYPES &amp; ERRORS</em></h2>
+<pre><span class="d">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]</span>
+<span class="k">struct</span> <span class="T">P</span> { x: <span class="t">i32</span>, y: <span class="t">i32</span> }     <span class="k">struct</span> <span class="T">Pair</span>(<span class="t">i32</span>, <span class="t">i32</span>);   <span class="c">// p.0</span>
+<span class="k">let</span> p = <span class="T">P</span> { x: <span class="n">1</span>, y: <span class="n">2</span> };   <span class="k">let</span> q = <span class="T">P</span> { x: <span class="n">5</span>, ..p };
+<span class="k">impl</span> <span class="T">P</span> {
+    <span class="k">fn</span> new(x: <span class="t">i32</span>, y: <span class="t">i32</span>) -&gt; <span class="k">Self</span> { <span class="k">Self</span> { x, y } }     <span class="c">// P::new(1, 2)</span>
+    <span class="k">fn</span> dist(&amp;<span class="k">self</span>) -&gt; <span class="t">i32</span> { <span class="k">self</span>.x.abs() + <span class="k">self</span>.y.abs() }
+    <span class="k">fn</span> shift(&amp;<span class="k">mut</span> <span class="k">self</span>, d: <span class="t">i32</span>) { <span class="k">self</span>.x += d; }
+}
+<span class="k">enum</span> <span class="T">Shape</span> { <span class="T">Circle</span>(<span class="t">f64</span>), <span class="T">Rect</span> { w: <span class="t">f64</span>, h: <span class="t">f64</span> }, <span class="T">Empty</span> }
+<span class="k">enum</span> <span class="T">Dir</span> { <span class="T">N</span>, <span class="T">E</span>, <span class="T">S</span>, <span class="T">W</span> }    <span class="T">Dir</span>::<span class="T">N</span> <span class="k">as</span> <span class="t">usize</span>   <span class="c">// 0</span>
+<span class="k">trait</span> <span class="T">Area</span> { <span class="k">fn</span> area(&amp;<span class="k">self</span>) -&gt; <span class="t">f64</span>;
+    <span class="k">fn</span> name(&amp;<span class="k">self</span>) -&gt; <span class="T">String</span> { <span class="s">"?"</span>.into() } }        <span class="c">// default method</span>
+<span class="k">impl</span> <span class="T">Area</span> <span class="k">for</span> <span class="T">P</span> { <span class="k">fn</span> area(&amp;<span class="k">self</span>) -&gt; <span class="t">f64</span> { <span class="n">0.0</span> } }
+<span class="k">fn</span> show(a: &amp;<span class="k">impl</span> <span class="T">Area</span>) { }  <span class="k">fn</span> show&lt;<span class="T">T</span>: <span class="T">Area</span>&gt;(a: &amp;<span class="T">T</span>) { }  <span class="k">fn</span> show(a: &amp;<span class="k">dyn</span> <span class="T">Area</span>) { }
+<span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="T">Box</span>&lt;<span class="k">dyn</span> <span class="T">Area</span>&gt;&gt; = <span class="b">vec!</span>[<span class="T">Box</span>::new(p)];
+<span class="k">impl</span> std::fmt::<span class="T">Display</span> <span class="k">for</span> <span class="T">P</span> {
+    <span class="k">fn</span> fmt(&amp;<span class="k">self</span>, f: &amp;<span class="k">mut</span> std::fmt::<span class="T">Formatter</span>) -&gt; std::fmt::<span class="T">Result</span> {
+        <span class="b">write!</span>(f, <span class="s">"({}, {})"</span>, <span class="k">self</span>.x, <span class="k">self</span>.y) } }</pre>
+</section>
+
+<!-- 17 Ownership · Borrowing · Lifetimes -->
+<section class="card typ" id="s17">
+<h2><span class="no">17</span>Ownership · Borrowing · Lifetimes<em>TYPES &amp; ERRORS</em></h2>
+<pre><span class="k">let</span> a = <span class="T">String</span>::from(<span class="s">"x"</span>); <span class="k">let</span> b = a;    <span class="c">// a moved, unusable</span>
+<span class="k">let</span> b = a.clone();  <span class="c">/* deep copy */</span>      <span class="k">let</span> n = <span class="n">5</span>; <span class="k">let</span> m = n;  <span class="c">// Copy types</span>
+<span class="k">fn</span> f(s: &amp;<span class="T">String</span>)      <span class="c">// shared borrow (read)</span>
+<span class="k">fn</span> f(s: &amp;<span class="k">mut</span> <span class="T">String</span>)  <span class="c">// exclusive borrow (one at a time)</span>
+<span class="k">fn</span> f(s: <span class="T">String</span>)       <span class="c">// takes ownership</span>
+<span class="k">fn</span> f(s: &amp;<span class="t">str</span>) / f(v: &amp;[<span class="T">T</span>])   <span class="c">// slices accept more callers </span><span class="star">★</span>
+ <span class="e">E0502</span> <span class="k">mut</span> + shared borrow at once -&gt; clone value first: <span class="k">let</span> x = v[i]; v.push(x);
+ <span class="e">E0499</span> two <span class="k">mut</span> borrows -&gt; v.swap(i, j) / split_at_mut / std::mem::swap
+ <span class="e">E0382</span> <span class="k">use</span> after <span class="k">move</span>  -&gt; iterate &amp;v / .iter() / .clone()
+ <span class="e">E0308</span> <span class="k">type</span> mismatch   -&gt; `<span class="k">as</span>` cast, &amp;s vs s, <span class="t">usize</span> vs <span class="t">i32</span>
+ <span class="e">E0106</span> missing lifetime -&gt; <span class="k">fn</span> f&lt;<span class="w">'a</span>&gt;(a: &amp;<span class="w">'a</span> <span class="t">str</span>, b: &amp;<span class="w">'a</span> <span class="t">str</span>) -&gt; &amp;<span class="w">'a</span> <span class="t">str</span>
+                          <span class="k">struct</span> <span class="T">W</span>&lt;<span class="w">'a</span>&gt; { s: &amp;<span class="w">'a</span> <span class="t">str</span> }  <span class="c">// or just own a String</span>
+map.get(&amp;k).copied().unwrap_or(<span class="n">0</span>)       <span class="c">// end the borrow, get the value</span>
+std::mem::take(&amp;<span class="k">mut</span> v)    std::mem::replace(&amp;<span class="k">mut</span> a, b)    (a, b) = (b, a);
+<span class="k">use</span> std::{rc::<span class="T">Rc</span>, cell::<span class="T">RefCell</span>};       <span class="c">// shared mutable, single thread</span>
+<span class="k">let</span> n = <span class="T">Rc</span>::new(<span class="T">RefCell</span>::new(<span class="n">0</span>)); *n.borrow_mut() += <span class="n">1</span>; <span class="k">let</span> n2 = <span class="T">Rc</span>::clone(&amp;n);</pre>
+</section>
+
+<!-- 18 Option · Result · ? · Errors -->
+<section class="card typ" id="s18">
+<h2><span class="no">18</span>Option · Result · ? · Errors<em>TYPES &amp; ERRORS</em></h2>
+<pre>o.unwrap() o.expect(<span class="s">"msg"</span>) o.unwrap_or(<span class="n">0</span>) o.unwrap_or_default() o.is_some()
+o.unwrap_or_else(|| calc())  o.map(|x| x + <span class="n">1</span>)  o.and_then(f)  o.filter(|x| ..)
+o.take()  o.replace(v)  o.as_ref()  o.as_mut()  o.or(p)
+o.get_or_insert(v)  o.zip(p)  o.map_or(<span class="n">0</span>, |x| x)  o.is_none()
+r.map_err(|e| ..)  r.unwrap_or(d)  r.unwrap_or_default()  r.is_ok()  r.is_err()
+<span class="c">// Option &lt;-&gt; Result conversion </span><span class="star">★</span>
+o.ok_or(e)   o.ok_or_else(|| e)        <span class="c">// Option&lt;T&gt; -&gt; Result&lt;T, E&gt;</span>
+r.ok()       r.err()                   <span class="c">// Result&lt;T, E&gt; -&gt; Option&lt;T&gt; / Option&lt;E&gt;</span>
+o.transpose()  r.transpose()   <span class="c">// Option&lt;Result&lt;T,E&gt;&gt; &lt;-&gt; Result&lt;Option&lt;T&gt;,E&gt;</span>
+<span class="k">let</span> x = o.ok_or(<span class="s">"missing"</span>)?;           <span class="c">// use ? on an Option in a Result fn</span>
+<span class="k">let</span> n = s.parse::&lt;<span class="t">i32</span>&gt;().ok()?;        <span class="c">// use ? on a Result in an Option fn</span>
+<span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = a.iter().map(|s| s.parse()).collect::&lt;<span class="T">Result</span>&lt;_,_&gt;&gt;()?; <span class="c">// 1st Err</span>
+<span class="k">let</span> v: <span class="T">Option</span>&lt;<span class="T">Vec</span>&lt;<span class="t">u32</span>&gt;&gt; = a.iter().map(|x| x.checked_mul(<span class="n">2</span>)).collect(); <span class="c">// any None</span>
+<span class="k">let</span> v: <span class="T">Vec</span>&lt;<span class="t">i32</span>&gt; = a.iter().filter_map(|s| s.parse().ok()).collect();   <span class="c">// skip bad</span>
+o.is_some_and(|x| x &gt; <span class="n">0</span>)   o.is_none_or(|x| x &gt; <span class="n">0</span>)   r.is_ok_and(|x| x &gt; <span class="n">0</span>)
+o?  r?                   <span class="c">// early-return None / Err from the fn </span><span class="star">★</span>
+<span class="k">fn</span> parse(s: &amp;<span class="t">str</span>) -&gt; <span class="T">Result</span>&lt;<span class="t">i32</span>, <span class="T">String</span>&gt; {
+    <span class="k">let</span> n: <span class="t">i32</span> = s.parse().map_err(|e| <span class="b">format!</span>(<span class="s">"{e}"</span>))?;
+    <span class="k">if</span> n &lt; <span class="n">0</span> { <span class="k">return</span> <span class="p">Err</span>(<span class="s">"negative"</span>.into()); }
+    <span class="p">Ok</span>(n)
+}
+<span class="k">fn</span> main() -&gt; <span class="T">Result</span>&lt;(), <span class="T">Box</span>&lt;<span class="k">dyn</span> std::error::<span class="T">Error</span>&gt;&gt; {
+    <span class="k">let</span> n: <span class="t">i32</span> = <span class="s">"42"</span>.parse()?;    <span class="c">// any error type converts</span>
+    <span class="p">Ok</span>(())
+}
+<span class="b">panic!</span>(<span class="s">"bad {x}"</span>); <span class="b">unreachable!</span>(); <span class="b">todo!</span>(); <span class="b">assert!</span>(c); <span class="b">assert_eq!</span>(a, b);</pre>
+</section>
+
+<!-- 19 Channels · mpsc -->
+<section class="card con" id="s19">
+<h2><span class="no">19</span>Channels · mpsc <small>multi-producer, single-consumer</small><em>CONCURRENCY</em></h2>
+<pre><span class="k">use</span> std::{sync::mpsc, thread, time::<span class="T">Duration</span>};
+<span class="k">let</span> (tx, rx) = mpsc::channel::&lt;<span class="t">i32</span>&gt;();   <span class="c">// unbounded: send never blocks</span>
+<span class="k">let</span> (tx, rx) = mpsc::sync_channel(<span class="n">16</span>);   <span class="c">// bounded: send blocks when full</span>
+tx.send(x).unwrap();                     <span class="c">// Err if receiver dropped</span>
+rx.recv()                                <span class="c">// blocks; Err once ALL tx dropped</span>
+rx.try_recv()   rx.recv_timeout(<span class="T">Duration</span>::from_millis(<span class="n">100</span>))   rx.try_iter()
+<span class="k">for</span> msg <span class="k">in</span> rx { }                        <span class="c">// ends when every tx is dropped </span><span class="star">★</span>
+<span class="c">// N producers -&gt; 1 consumer</span>
+<span class="k">let</span> (tx, rx) = mpsc::channel();
+<span class="k">let</span> hs: <span class="T">Vec</span>&lt;_&gt; = (<span class="n">0</span>..<span class="n">4</span>).map(|id| {
+    <span class="k">let</span> tx = tx.clone();                 <span class="c">// one clone per producer </span><span class="star">★</span>
+    thread::spawn(<span class="k">move</span> || { <span class="k">for</span> i <span class="k">in</span> <span class="n">0</span>..<span class="n">3</span> { tx.send((id, i)).unwrap(); } })
+}).collect();                            <span class="c">// each tx drops when its thread ends</span>
+drop(tx);                                <span class="c">// drop the original or `for` hangs </span><span class="star">★</span>
+<span class="k">for</span> (id, i) <span class="k">in</span> rx { <span class="b">println!</span>(<span class="s">"{id}: {i}"</span>); }
+<span class="k">for</span> h <span class="k">in</span> hs { h.join().unwrap(); }
+<span class="c">// scoped threads may borrow locals (no Arc, no 'static)</span>
+thread::scope(|s| { s.spawn(|| work(&amp;data)); s.spawn(|| work(&amp;data)); });</pre>
+<p class="note"><span class="lbl">Note</span><span class="sans"> </span><code class="T chip">Sender</code><span class="sans"> is </span><code class="T chip">Clone</code><span class="sans"> ; </span><code class="T chip">Receiver</code><span class="sans"> is NOT </span><code class="T chip">Clone</code><span class="sans"> → exactly one consumer. Many consumers → share it via </span><code class="T chip">Arc</code><code class="chip">&lt;</code><code class="T chip">Mutex</code><code class="chip">&lt;_&gt;&gt;</code><span class="sans"> (see the SPMC card).</span></p>
+</section>
+
+<!-- 20 SPMC · Worker Pool -->
+<section class="card con" id="s20">
+<h2><span class="no">20</span>SPMC · Worker Pool <small>single producer, multiple consumers</small><em>CONCURRENCY</em></h2>
+<pre><span class="k">use</span> std::sync::{mpsc, <span class="T">Arc</span>, <span class="T">Mutex</span>};
+<span class="k">let</span> (tx, rx) = mpsc::channel::&lt;<span class="t">u64</span>&gt;();       <span class="c">// jobs</span>
+<span class="k">let</span> rx = <span class="T">Arc</span>::new(<span class="T">Mutex</span>::new(rx));           <span class="c">// ONE receiver, shared </span><span class="star">★</span>
+<span class="k">let</span> (rtx, rrx) = mpsc::channel();            <span class="c">// results back (MPSC)</span>
+<span class="k">let</span> workers: <span class="T">Vec</span>&lt;_&gt; = (<span class="n">0</span>..<span class="n">4</span>).map(|id| {
+    <span class="k">let</span> (rx, rtx) = (<span class="T">Arc</span>::clone(&amp;rx), rtx.clone());
+    thread::spawn(<span class="k">move</span> || <span class="k">loop</span> {
+        <span class="k">let</span> job = rx.lock().unwrap().recv(); <span class="c">// lock released at `;` </span><span class="star">★</span>
+        <span class="k">match</span> job {
+            <span class="p">Ok</span>(n) =&gt; rtx.send((id, n * n)).unwrap(),
+            <span class="p">Err</span>(_) =&gt; <span class="k">break</span>,                 <span class="c">// channel closed -&gt; exit</span>
+        }
+    })
+}).collect();
+drop(rtx);                                   <span class="c">// only workers hold senders</span>
+<span class="k">for</span> n <span class="k">in</span> <span class="n">0</span>..<span class="n">10</span> { tx.send(n).unwrap(); }      <span class="c">// the single producer</span>
+drop(tx);                                    <span class="c">// close -&gt; workers exit</span>
+<span class="k">let</span> results: <span class="T">Vec</span>&lt;(<span class="t">usize</span>, <span class="t">u64</span>)&gt; = rrx.iter().collect();
+<span class="k">for</span> w <span class="k">in</span> workers { w.join().unwrap(); }
+<span class="k">use</span> std::sync::atomic::{<span class="T">AtomicU64</span>, <span class="T">Ordering</span>};      <span class="c">// lock-free counter</span>
+<span class="k">let</span> c = <span class="T">Arc</span>::new(<span class="T">AtomicU64</span>::new(<span class="n">0</span>));      c.fetch_add(<span class="n">1</span>, <span class="T">Ordering</span>::<span class="T">Relaxed</span>);
+<span class="k">let</span> (tx, rx) = crossbeam_channel::bounded::&lt;<span class="t">u64</span>&gt;(<span class="n">16</span>); <span class="c">// crate: MPMC, rx: Clone</span></pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> </span><code class="s k0">while</code><code> </code><code class="s k0">let</code><code> </code><code class="p">Ok</code><code>(j) = rx.lock().unwrap().recv() { .. }</code><span class="sans"> holds the lock for the WHOLE body → workers run one at a time. Bind with </span><code class="s k0 chip">let</code><span class="sans"> first.</span></p>
+</section>
+
+<!-- 21 JSON · serde_json -->
+<section class="card json" id="s21">
+<h2><span class="no">21</span>JSON · serde_json <small>serde (derive) + serde_json</small><em>JSON</em></h2>
+<pre><span class="k">use</span> serde::{<span class="T">Deserialize</span>, <span class="T">Serialize</span>};   <span class="k">use</span> serde_json::{json, <span class="T">Value</span>};
+<span class="d">#[derive(Serialize, Deserialize, Debug, Clone)]</span>
+<span class="d">#[serde(rename_all = "camelCase")]</span>           <span class="c">// user_id &lt;-&gt; "userId"</span>
+<span class="k">struct</span> <span class="T">User</span> {
+    user_id: <span class="t">u64</span>,
+    name: <span class="T">String</span>,
+    <span class="d">#[serde(default)]</span> tags: <span class="T">Vec</span>&lt;<span class="T">String</span>&gt;,     <span class="c">// missing -&gt; empty</span>
+    email: <span class="T">Option</span>&lt;<span class="T">String</span>&gt;,                   <span class="c">// null / missing -&gt; None</span>
+    <span class="d">#[serde(rename = "type")]</span> kind: <span class="T">String</span>,  <span class="c">// reserved-word key</span>
+    <span class="d">#[serde(skip_serializing_if = "Option::is_none")]</span> nick: <span class="T">Option</span>&lt;<span class="T">String</span>&gt;,
+}
+<span class="k">let</span> u: <span class="T">User</span> = serde_json::from_str(s)?;          <span class="c">// &amp;str -&gt; struct </span><span class="star">★</span>
+<span class="k">let</span> us: <span class="T">Vec</span>&lt;<span class="T">User</span>&gt; = serde_json::from_str(s)?;    <span class="c">// JSON array</span>
+<span class="k">let</span> s = serde_json::to_string(&amp;u)?;   <span class="k">let</span> s = serde_json::to_string_pretty(&amp;u)?;
+<span class="c">// untyped: serde_json::Value</span>
+<span class="k">let</span> v: <span class="T">Value</span> = serde_json::from_str(<span class="s">r#"{"a":{"b":[1,2]}}"#</span>)?;
+v[<span class="s">"a"</span>][<span class="s">"b"</span>][<span class="n">0</span>]               <span class="c">// missing key -&gt; Value::Null, never panics</span>
+v[<span class="s">"a"</span>][<span class="s">"b"</span>][<span class="n">0</span>].as_i64()      <span class="c">// Option&lt;i64&gt;; as_str as_f64 as_bool as_array</span>
+v.get(<span class="s">"a"</span>).and_then(|x| x.get(<span class="s">"b"</span>))   v.pointer(<span class="s">"/a/b/1"</span>)   <span class="c">// Option&lt;&amp;Value&gt;</span>
+<span class="k">let</span> <span class="k">mut</span> v = <span class="b">json!</span>({ <span class="s">"id"</span>: <span class="n">1</span>, <span class="s">"tags"</span>: [<span class="s">"x"</span>, <span class="s">"y"</span>], <span class="s">"ok"</span>: <span class="k">true</span>, <span class="s">"n"</span>: null });
+v[<span class="s">"id"</span>] = <span class="b">json!</span>(<span class="n">2</span>);   v[<span class="s">"tags"</span>].as_array_mut().unwrap().push(<span class="s">"z"</span>.into());
+<span class="k">let</span> u: <span class="T">User</span> = serde_json::from_value(v)?;   <span class="k">let</span> v = serde_json::to_value(&amp;u)?;
+<span class="d">#[derive(Serialize, Deserialize)]</span>
+<span class="d">#[serde(tag = "type", rename_all = "snake_case")]</span>   <span class="c">// {"type":"order","id":1}</span>
+<span class="k">enum</span> <span class="T">Msg</span> { <span class="T">Ping</span>, <span class="T">Order</span> { id: <span class="t">u64</span>, px: <span class="t">f64</span> } }</pre>
+</section>
+
+<!-- 22 Algorithm Templates -->
+<section class="card alg" id="s22">
+<h2><span class="no">22</span>Algorithm Templates<em>ALGORITHMS</em></h2>
+<pre><span class="c">// BFS on a grid</span>
+<span class="k">let</span> d = [(<span class="n">0</span>, <span class="n">1</span>), (<span class="n">1</span>, <span class="n">0</span>), (<span class="n">0</span>, -<span class="n">1</span>), (-<span class="n">1</span>, <span class="n">0</span>)];
+<span class="k">let</span> <span class="k">mut</span> dist = <span class="b">vec!</span>[<span class="b">vec!</span>[-<span class="n">1</span>; m]; n]; dist[sr][sc] = <span class="n">0</span>;
+<span class="k">let</span> <span class="k">mut</span> q = <span class="T">VecDeque</span>::from([(sr, sc)]);
+<span class="k">while</span> <span class="k">let</span> <span class="p">Some</span>((r, c)) = q.pop_front() {
+    <span class="k">for</span> &amp;(dr, dc) <span class="k">in</span> &amp;d {
+        <span class="k">let</span> (nr, nc) = (r <span class="k">as</span> <span class="t">i32</span> + dr, c <span class="k">as</span> <span class="t">i32</span> + dc);
+        <span class="k">if</span> nr &lt; <span class="n">0</span> || nc &lt; <span class="n">0</span> || nr &gt;= n <span class="k">as</span> <span class="t">i32</span> || nc &gt;= m <span class="k">as</span> <span class="t">i32</span> { <span class="k">continue</span>; }
+        <span class="k">let</span> (nr, nc) = (nr <span class="k">as</span> <span class="t">usize</span>, nc <span class="k">as</span> <span class="t">usize</span>);
+        <span class="k">if</span> grid[nr][nc] == <span class="s">b'#'</span> || dist[nr][nc] != -<span class="n">1</span> { <span class="k">continue</span>; }
+        dist[nr][nc] = dist[r][c] + <span class="n">1</span>; q.push_back((nr, nc));
+    }
+}
+<span class="c">// Dijkstra</span>
+<span class="k">let</span> <span class="k">mut</span> dist = <span class="b">vec!</span>[<span class="t">i64</span>::<span class="T">MAX</span>; n]; dist[s] = <span class="n">0</span>;
+<span class="k">let</span> <span class="k">mut</span> pq = <span class="T">BinaryHeap</span>::from([<span class="T">Reverse</span>((<span class="n">0i64</span>, s))]);
+<span class="k">while</span> <span class="k">let</span> <span class="p">Some</span>(<span class="T">Reverse</span>((d, u))) = pq.pop() {
+    <span class="k">if</span> d &gt; dist[u] { <span class="k">continue</span>; }
+    <span class="k">for</span> &amp;(v, w) <span class="k">in</span> &amp;adj[u] {
+        <span class="k">let</span> nd = d + w;
+        <span class="k">if</span> nd &lt; dist[v] { dist[v] = nd; pq.push(<span class="T">Reverse</span>((nd, v))); }
+    }
+}
+<span class="c">// Union-Find (path compression)</span>
+<span class="k">fn</span> find(p: &amp;<span class="k">mut</span> <span class="T">Vec</span>&lt;<span class="t">usize</span>&gt;, x: <span class="t">usize</span>) -&gt; <span class="t">usize</span> {
+    <span class="k">if</span> p[x] != x { p[x] = find(p, p[x]); } p[x] }
+<span class="k">fn</span> union(p: &amp;<span class="k">mut</span> <span class="T">Vec</span>&lt;<span class="t">usize</span>&gt;, a: <span class="t">usize</span>, b: <span class="t">usize</span>) {
+    <span class="k">let</span> (a, b) = (find(p, a), find(p, b)); <span class="k">if</span> a != b { p[a] = b; } }
+<span class="c">// binary search on answer: smallest x with ok(x)</span>
+<span class="k">let</span> (<span class="k">mut</span> lo, <span class="k">mut</span> hi) = (<span class="n">0i64</span>, <span class="n">1e18</span> <span class="k">as</span> <span class="t">i64</span>);
+<span class="k">while</span> lo &lt; hi { <span class="k">let</span> mid = lo + (hi - lo) / <span class="n">2</span>;
+    <span class="k">if</span> ok(mid) { hi = mid; } <span class="k">else</span> { lo = mid + <span class="n">1</span>; } }
+<span class="c">// DP table · prefix sum · sliding window</span>
+<span class="k">let</span> <span class="k">mut</span> dp = <span class="b">vec!</span>[<span class="b">vec!</span>[<span class="n">0i64</span>; m + <span class="n">1</span>]; n + <span class="n">1</span>];
+<span class="k">let</span> <span class="k">mut</span> pre = <span class="b">vec!</span>[<span class="n">0</span>; n + <span class="n">1</span>];
+<span class="k">for</span> i <span class="k">in</span> <span class="n">0</span>..n { pre[i + <span class="n">1</span>] = pre[i] + a[i]; }     <span class="c">// sum[l..r] = pre[r] - pre[l]</span>
+<span class="k">let</span> (<span class="k">mut</span> l, <span class="k">mut</span> sum) = (<span class="n">0</span>, <span class="n">0</span>);
+<span class="k">for</span> r <span class="k">in</span> <span class="n">0</span>..n { sum += a[r]; <span class="k">while</span> sum &gt; k { sum -= a[l]; l += <span class="n">1</span>; } }
+<span class="c">// fast modular power</span>
+<span class="k">fn</span> pw(<span class="k">mut</span> b: <span class="t">i64</span>, <span class="k">mut</span> e: <span class="t">i64</span>, m: <span class="t">i64</span>) -&gt; <span class="t">i64</span> { <span class="k">let</span> <span class="k">mut</span> r = <span class="n">1</span>; b %= m;
+    <span class="k">while</span> e &gt; <span class="n">0</span> { <span class="k">if</span> e &amp; <span class="n">1</span> == <span class="n">1</span> { r = r * b % m; } b = b * b % m; e &gt;&gt;= <span class="n">1</span>; } r }</pre>
+</section>
+
+<!-- 23 Misc · Easy to Forget -->
+<section class="card alg" id="s23">
+<h2><span class="no">23</span>Misc · Easy to Forget<em>ALGORITHMS</em></h2>
+<pre><span class="k">fn</span> gcd(a: <span class="t">u64</span>, b: <span class="t">u64</span>) -&gt; <span class="t">u64</span> { <span class="k">if</span> b == <span class="n">0</span> { a } <span class="k">else</span> { gcd(b, a % b) } }  <span class="c">// lcm</span>
+  node.left.as_ref().map_or(<span class="n">0</span>, |n| n.val)                <span class="sans dim">Option&lt;Box&lt;Node&gt;&gt; child</span>
+  x.count_ones() x.leading_zeros() x.trailing_zeros()    <span class="sans dim">bits · x &amp; (x - 1)</span>
+  <span class="n">1u64</span> &lt;&lt; k b.pow(e)                                     <span class="sans dim">shift / exponent must be u32</span>
+  <span class="d">#![allow(dead_code, unused)]</span>                           <span class="sans dim">silence warnings (file top)</span>
+  v.len() - <span class="n">1</span> on an empty <span class="T">Vec</span>                            <span class="sans dim">panics → saturating_sub(1)</span>
+  std::env::args().collect::&lt;<span class="T">Vec</span>&lt;_&gt;&gt;()                   <span class="sans dim">CLI args</span>
+  std::fs::read_to_string(path)?                         <span class="sans dim">read a whole file</span></pre>
+<p class="note"><span class="lbl">Routine</span><span class="sans"> ① parse input first ② decide </span><code class="t chip">i64</code><span class="sans"> vs </span><code class="t chip">usize</code><span class="sans"> boundaries ③ signatures take </span><code class="chip">&amp;[</code><code class="T chip">T</code><code class="chip">]</code><span class="sans"> / </span><code class="chip">&amp;</code><code class="t chip">str</code><span class="sans"> ④ stuck on a borrow?</span><code class="chip"> .clone()</code><span class="sans"> now, optimize later ⑤ </span><code class="b chip">dbg!</code><span class="sans"> intermediate values ⑥ </span><code class="chip">--release</code><span class="sans"> when timing.</span></p>
+</section>
+
+</div></main>
+</div>
+</body>
+</html>

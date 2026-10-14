@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Go Live-Coding Cheatsheet</title>
+<link rel="stylesheet" href="assets/cheatsheet.css">
+<script src="assets/fit.js" defer></script>
+</head>
+<body>
+<div class="page">
+<header class="top"><span class="badge go">GO</span><h1>Live-Coding <span>Cheatsheet</span></h1>
+<p class="tagline">HackerRank-style interviews · syntax, std patterns, I/O, goroutines &amp; channels, JSON · one A3 sheet</p>
+<div class="key">syntax key <code class="k">keyword</code><code class="t">i64</code><code class="T">Type</code><code class="s">"str"</code><code class="b">macro!</code><code class="c">// comment</code><br><span class="star">★</span> use constantly · <b class="tb">TRAP</b> common gotcha · <span class="bar">▌</span> trap / tip</div>
+</header>
+<nav class="nav"><span class="io">I/O <i>01–03</i></span><span class="syn">Syntax <i>04–06</i></span><span class="col">Collections <i>07–11</i></span><span class="typ">Types &amp; Errors <i>12–14</i></span><span class="con">Concurrency <i>15–17</i></span><span class="json">JSON <i>18</i></span><span class="alg">Algorithms <i>19–20</i></span><span class="right">sections numbered <b>01</b>→ in reading order, column by column</span></nav>
+<main class="fit"><div class="cards">
+
+<!-- 01 Fast I/O -->
+<section class="card io" id="s01">
+<h2><span class="no">01</span>Fast I/O <small>bufio — never raw fmt.Scan in loops</small><em>I/O</em></h2>
+<pre><span class="k">package</span> main
+<span class="k">import</span> (<span class="s">"bufio"</span>; <span class="s">"fmt"</span>; <span class="s">"os"</span>; <span class="s">"strconv"</span>; <span class="s">"strings"</span>)
+
+<span class="k">func</span> main() {
+    in := bufio.<span class="T">NewReader</span>(os.<span class="T">Stdin</span>)           <span class="c">// buffered stdin </span><span class="star">★</span>
+    out := bufio.<span class="T">NewWriter</span>(os.<span class="T">Stdout</span>)         <span class="c">// buffered stdout </span><span class="star">★</span>
+    <span class="k">defer</span> out.<span class="T">Flush</span>()                         <span class="c">// or nothing is printed!</span>
+    <span class="k">var</span> n <span class="t">int</span>
+    fmt.<span class="T">Fscan</span>(in, &amp;n)                         <span class="c">// whitespace-separated tokens</span>
+    a := <span class="b">make</span>([]<span class="t">int</span>, n)
+    <span class="k">for</span> i := <span class="k">range</span> a { fmt.<span class="T">Fscan</span>(in, &amp;a[i]) }
+    fmt.<span class="T">Fprintln</span>(out, n, a[<span class="n">0</span>])
+}
+<span class="c">// faster token reader for 10^6+ ints: bufio.Scanner + ScanWords</span>
+sc := bufio.<span class="T">NewScanner</span>(os.<span class="T">Stdin</span>)
+sc.<span class="T">Buffer</span>(<span class="b">make</span>([]<span class="t">byte</span>, <span class="n">1</span>&lt;&lt;<span class="n">20</span>), <span class="n">1</span>&lt;&lt;<span class="n">20</span>)         <span class="c">// raise 64KB line limit </span><span class="star">★</span>
+sc.<span class="T">Split</span>(bufio.<span class="T">ScanWords</span>)
+next := <span class="k">func</span>() <span class="t">int</span> { sc.<span class="T">Scan</span>(); v, _ := strconv.<span class="T">Atoi</span>(sc.<span class="T">Text</span>()); <span class="k">return</span> v }
+n := next()</pre>
+</section>
+
+<!-- 02 HackerRank Input Patterns -->
+<section class="card io" id="s02">
+<h2><span class="no">02</span>HackerRank Input Patterns <small>line-based stubs</small><em>I/O</em></h2>
+<pre>sc := bufio.<span class="T">NewScanner</span>(os.<span class="T">Stdin</span>)              <span class="c">// line by line (default)</span>
+sc.<span class="T">Scan</span>(); n, _ := strconv.<span class="T">Atoi</span>(strings.<span class="T">TrimSpace</span>(sc.<span class="T">Text</span>()))
+sc.<span class="T">Scan</span>(); f := strings.<span class="T">Fields</span>(sc.<span class="T">Text</span>())     <span class="c">// "3 5" -&gt; ["3", "5"]</span>
+a, _ := strconv.<span class="T">Atoi</span>(f[<span class="n">0</span>]); b, _ := strconv.<span class="T">Atoi</span>(f[<span class="n">1</span>])
+<span class="c">// helper: one line -&gt; []int</span>
+readInts := <span class="k">func</span>() []<span class="t">int</span> {
+    sc.<span class="T">Scan</span>(); f := strings.<span class="T">Fields</span>(sc.<span class="T">Text</span>()); v := <span class="b">make</span>([]<span class="t">int</span>, <span class="b">len</span>(f))
+    <span class="k">for</span> i, s := <span class="k">range</span> f { v[i], _ = strconv.<span class="T">Atoi</span>(s) }
+    <span class="k">return</span> v
+}
+hdr := readInts(); n, m := hdr[<span class="n">0</span>], hdr[<span class="n">1</span>]
+grid := <span class="b">make</span>([][]<span class="t">int</span>, n)                      <span class="c">// n rows of m ints</span>
+<span class="k">for</span> i := <span class="k">range</span> grid { grid[i] = readInts() }
+g := <span class="b">make</span>([][]<span class="t">byte</span>, n)                        <span class="c">// "#..#" char grid -&gt; bytes</span>
+<span class="k">for</span> i := <span class="k">range</span> g { sc.<span class="T">Scan</span>(); g[i] = []<span class="t">byte</span>(strings.<span class="T">TrimSpace</span>(sc.<span class="T">Text</span>())) }
+<span class="c">// q command queries: "push 5" / "pop" / "print"</span>
+<span class="k">for</span> i := <span class="n">0</span>; i &lt; q; i++ {
+    sc.<span class="T">Scan</span>(); t := strings.<span class="T">Fields</span>(sc.<span class="T">Text</span>())
+    <span class="k">switch</span> t[<span class="n">0</span>] {
+    <span class="k">case</span> <span class="s">"push"</span>: x, _ := strconv.<span class="T">Atoi</span>(t[<span class="n">1</span>]); st = <span class="b">append</span>(st, x)
+    <span class="k">case</span> <span class="s">"pop"</span>:  st = st[:<span class="b">len</span>(st)-<span class="n">1</span>]
+    <span class="k">default</span>:     fmt.<span class="T">Fprintln</span>(out, st[<span class="b">len</span>(st)-<span class="n">1</span>])
+    }
+}
+<span class="k">for</span> sc.<span class="T">Scan</span>() { line := sc.<span class="T">Text</span>(); <span class="k">if</span> line == <span class="s">""</span> { <span class="k">continue</span> } }  <span class="c">// until EOF</span>
+<span class="c">// output: space-joined ints, fixed decimals, YES/NO</span>
+strs := <span class="b">make</span>([]<span class="t">string</span>, <span class="b">len</span>(v)); <span class="k">for</span> i, x := <span class="k">range</span> v { strs[i] = strconv.<span class="T">Itoa</span>(x) }
+fmt.<span class="T">Fprintln</span>(out, strings.<span class="T">Join</span>(strs, <span class="s">" "</span>))
+fmt.<span class="T">Fprintf</span>(out, <span class="s">"%.6f\n"</span>, ans)
+<span class="k">if</span> ok { fmt.<span class="T">Fprintln</span>(out, <span class="s">"YES"</span>) } <span class="k">else</span> { fmt.<span class="T">Fprintln</span>(out, <span class="s">"NO"</span>) }</pre>
+<p class="note"><span class="lbl">Traps</span><span class="sans"> </span><code class="chip">fmt.</code><code class="T chip">Scan</code><span class="sans"> is ~10× slower than </span><code class="chip">bufio</code><span class="sans"> . </span><code class="T chip">Scanner</code><span class="sans"> default max line is 64KB → </span><code class="chip">sc.</code><code class="T chip">Buffer</code><span class="sans"> . </span><code class="T chip">Atoi</code><span class="sans"> on </span><code class="s chip">"5\r"</code><span class="sans"> fails → </span><code class="T chip">TrimSpace</code><span class="sans"> . Sums beyond 2³¹: </span><code class="t chip">int</code><span class="sans"> is 64-bit on amd64/arm64, so plain </span><code class="t chip">int</code><span class="sans"> is fine.</span></p>
+</section>
+
+<!-- 03 fmt · Printing -->
+<section class="card io" id="s03">
+<h2><span class="no">03</span>fmt · Printing<em>I/O</em></h2>
+<pre>fmt.<span class="T">Println</span>(a, b)            fmt.<span class="T">Printf</span>(<span class="s">"%d %s\n"</span>, n, s)
+fmt.<span class="T">Printf</span>(<span class="s">"%v %+v %#v %T"</span>, x, p, p, x)   <span class="c">// value, +field names, Go syntax, type</span>
+fmt.<span class="T">Printf</span>(<span class="s">"%5d|%-5d|%05d|%x|%b|%o|%c|%q"</span>, n, n, n, n, n, n, c, s)
+fmt.<span class="T">Printf</span>(<span class="s">"%.3f %8.2f %e %t %p"</span>, f, f, f, ok, &amp;x)   <span class="c">// %*d: width from arg</span>
+fmt.<span class="T">Printf</span>(<span class="s">"%v %v %v"</span>, []<span class="t">int</span>{<span class="n">1</span>}, <span class="k">map</span>[<span class="t">string</span>]<span class="t">int</span>{<span class="s">"a"</span>: <span class="n">1</span>}, <span class="k">struct</span>{}{})
+s := fmt.<span class="T">Sprintf</span>(<span class="s">"%d-%s"</span>, n, t)   fmt.<span class="T">Sprint</span>(a, b)   fmt.<span class="T">Fprintln</span>(os.<span class="T">Stderr</span>, <span class="s">"e"</span>)
+<span class="k">var</span> sb strings.<span class="T">Builder</span>; sb.<span class="T">WriteString</span>(<span class="s">"x"</span>); sb.<span class="T">WriteByte</span>(<span class="s">'y'</span>); sb.<span class="T">String</span>() <span class="c">// </span><span class="star">★</span></pre>
+</section>
+
+<!-- 04 Functions · Closures · defer -->
+<section class="card syn" id="s04">
+<h2><span class="no">04</span>Functions · Closures · defer<em>SYNTAX</em></h2>
+<pre><span class="k">func</span> add(a, b <span class="t">int</span>) <span class="t">int</span> { <span class="k">return</span> a + b }
+<span class="k">func</span> divmod(a, b <span class="t">int</span>) (q, r <span class="t">int</span>) { q, r = a/b, a%b; <span class="k">return</span> }  <span class="c">// named returns</span>
+<span class="k">func</span> sum(nums ...<span class="t">int</span>) <span class="t">int</span> { }   sum(<span class="n">1</span>, <span class="n">2</span>)   sum(v...)        <span class="c">// variadic</span>
+<span class="k">func</span> apply(f <span class="k">func</span>(<span class="t">int</span>) <span class="t">int</span>, x <span class="t">int</span>) <span class="t">int</span> { <span class="k">return</span> f(x) }
+sq := <span class="k">func</span>(x <span class="t">int</span>) <span class="t">int</span> { <span class="k">return</span> x * x }
+cnt := <span class="n">0</span>;  inc := <span class="k">func</span>() { cnt++ }     <span class="c">// closures capture by reference </span><span class="star">★</span>
+<span class="k">var</span> dfs <span class="k">func</span>(u <span class="t">int</span>)                    <span class="c">// recursive closure: declare first </span><span class="star">★</span>
+dfs = <span class="k">func</span>(u <span class="t">int</span>) { vis[u] = <span class="p">true</span>
+    <span class="k">for</span> _, v := <span class="k">range</span> adj[u] { <span class="k">if</span> !vis[v] { dfs(v) } } }
+<span class="k">defer</span> f.<span class="T">Close</span>()                        <span class="c">// runs at function return, LIFO order</span>
+<span class="k">defer</span> <span class="k">func</span>() { <span class="k">if</span> r := <span class="b">recover</span>(); r != <span class="p">nil</span> { log.<span class="T">Println</span>(r) } }()
+<span class="k">func</span> <span class="T">Map</span>[<span class="T">T</span>, <span class="T">U</span> <span class="t">any</span>](xs []<span class="T">T</span>, f <span class="k">func</span>(<span class="T">T</span>) <span class="T">U</span>) []<span class="T">U</span> {         <span class="c">// generics </span><span class="star">★</span>
+    out := <span class="b">make</span>([]<span class="T">U</span>, <span class="n">0</span>, <span class="b">len</span>(xs)); <span class="k">for</span> _, x := <span class="k">range</span> xs { out = <span class="b">append</span>(out, f(x)) }
+    <span class="k">return</span> out }
+<span class="k">func</span> <span class="T">Max</span>[<span class="T">T</span> cmp.<span class="T">Ordered</span>](a, b <span class="T">T</span>) <span class="T">T</span> { <span class="k">if</span> a &gt; b { <span class="k">return</span> a }; <span class="k">return</span> b }
+<span class="k">type</span> <span class="T">Number</span> <span class="k">interface</span> { ~<span class="t">int</span> | ~<span class="t">int64</span> | ~<span class="t">float64</span> }   <span class="c">// constraint</span></pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> Loop var in closures: since Go 1.22 each iteration has its own </span><code class="chip">i</code><span class="sans"> ; before, </span><code class="s k0 chip">go</code><code class="chip"> </code><code class="s k0 chip">func</code><code class="chip"> (){ use(i) }()</code><span class="sans"> saw the last value — pass </span><code class="chip">i</code><span class="sans"> as an arg.</span></p>
+</section>
+
+<!-- 05 Control Flow -->
+<section class="card syn" id="s05">
+<h2><span class="no">05</span>Control Flow<em>SYNTAX</em></h2>
+<pre><span class="k">if</span> x &gt; <span class="n">0</span> { } <span class="k">else</span> <span class="k">if</span> x &lt; <span class="n">0</span> { } <span class="k">else</span> { }        <span class="c">// braces required, no parens</span>
+<span class="k">if</span> v, ok := m[k]; ok { }                       <span class="c">// init statement </span><span class="star">★</span>
+<span class="k">for</span> i := <span class="n">0</span>; i &lt; n; i++ { }                     <span class="c">// the only loop keyword</span>
+<span class="k">for</span> i := <span class="n">1</span>; i &lt;= <span class="n">10</span>; i++ { }                   <span class="c">// 1..10 inclusive </span><span class="star">★</span>
+<span class="k">for</span> i := n - <span class="n">1</span>; i &gt;= <span class="n">0</span>; i-- { }
+<span class="k">for</span> i := <span class="k">range</span> n { }                           <span class="c">// 0..n-1  (Go 1.22+) </span><span class="star">★</span>
+<span class="k">for</span> i, v := <span class="k">range</span> a { }   <span class="k">for</span> _, v := <span class="k">range</span> a { }   <span class="k">for</span> i := <span class="k">range</span> a { }
+<span class="k">for</span> k, v := <span class="k">range</span> m { }   <span class="k">for</span> i, r := <span class="k">range</span> s { }   <span class="c">// s: rune + byte index</span>
+<span class="k">for</span> cond { }  <span class="c">/* while */</span>    <span class="k">for</span> { <span class="k">if</span> done { <span class="k">break</span> } }  <span class="c">/* loop */</span>
+outer: <span class="k">for</span> i := <span class="k">range</span> n { <span class="k">for</span> j := <span class="k">range</span> m { <span class="k">if</span> bad { <span class="k">continue</span> outer } } }
+<span class="k">switch</span> x {
+<span class="k">case</span> <span class="n">0</span>:        s = <span class="s">"zero"</span>
+<span class="k">case</span> <span class="n">1</span>, <span class="n">2</span>:     s = <span class="s">"small"</span>                     <span class="c">// no fallthrough by default</span>
+<span class="k">case</span> <span class="n">3</span>, <span class="n">4</span>, <span class="n">5</span>:  <span class="k">fallthrough</span>                     <span class="c">// explicit</span>
+<span class="k">default</span>:       s = <span class="s">"big"</span>
+}
+<span class="k">switch</span> { <span class="k">case</span> x &lt; <span class="n">0</span>: ..; <span class="k">case</span> x &lt; <span class="n">10</span>: ..; <span class="k">default</span>: .. }   <span class="c">// if-else chain </span><span class="star">★</span>
+<span class="k">switch</span> v := x.(<span class="k">type</span>) { <span class="k">case</span> <span class="t">int</span>: ..; <span class="k">case</span> <span class="t">string</span>: ..; <span class="k">case</span> <span class="p">nil</span>: .. } <span class="c">// type switch</span></pre>
+</section>
+
+<!-- 06 Variables · Types · Casting -->
+<section class="card syn" id="s06">
+<h2><span class="no">06</span>Variables · Types · Casting<em>SYNTAX</em></h2>
+<pre><span class="k">var</span> x <span class="t">int</span> = <span class="n">5</span>;  <span class="k">var</span> y = <span class="n">10</span>;  z := <span class="n">3.0</span>        <span class="c">// := only inside funcs (new var)</span>
+<span class="k">var</span> a, b <span class="t">int</span>;  c, d := <span class="n">1</span>, <span class="s">"hi"</span>;  a, b = b, a  <span class="c">// swap </span><span class="star">★</span>
+<span class="k">const</span> <span class="T">Mod</span> = <span class="n">1_000_000_007</span>;  <span class="k">const</span> ( <span class="T">A</span> = <span class="p">iota</span>; <span class="T">B</span>; <span class="T">C</span> )   <span class="c">// 0, 1, 2</span>
+x := <span class="t">int64</span>(y) * <span class="t">int64</span>(z)         <span class="c">// conversion is explicit, no implicit widening </span><span class="star">★</span>
+f := <span class="t">float64</span>(n) / <span class="t">float64</span>(m)     <span class="c">// int / int truncates</span>
+i := <span class="t">int</span>(f)                      <span class="c">// truncates toward 0;  math.Round(f)</span>
+r := <span class="t">rune</span>(s[<span class="n">0</span>]);  b := <span class="t">byte</span>(<span class="s">'a'</span>) <span class="c">// string index = byte;  "é" is 2 bytes</span>
+d := <span class="t">int</span>(c - <span class="s">'0'</span>)                <span class="c">// '7' -&gt; 7;   string(rune('a' + i))</span>
+n, err := strconv.<span class="T">Atoi</span>(s);  s := strconv.<span class="T">Itoa</span>(n)         <span class="c">// string &lt;-&gt; int </span><span class="star">★</span>
+f, _ := strconv.<span class="T">ParseFloat</span>(s, <span class="n">64</span>);  strconv.<span class="T">FormatInt</span>(n, <span class="n">2</span>)  <span class="c">// base 2</span>
+math.<span class="T">MaxInt64</span>  math.<span class="T">MinInt64</span>  math.<span class="T">MaxInt</span>  math.<span class="T">Inf</span>(<span class="n">1</span>)  math.<span class="T">MaxFloat64</span>
+x % m                            <span class="c">// sign follows x: (-7) % 3 == -1 → ((x%m)+m)%m</span>
+math.<span class="T">Abs</span>(f) math.<span class="T">Sqrt</span>(f) math.<span class="T">Pow</span>(f, <span class="n">2</span>) math.<span class="T">Floor</span>/<span class="T">Ceil</span>/<span class="T">Round</span> math.<span class="T">Log2</span>(f)
+<span class="b">min</span>(a, b)  <span class="b">max</span>(a, b, c)          <span class="c">// builtins (Go 1.21+) </span><span class="star">★</span><span class="c">   abs: write it</span></pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> Unused variable or import = compile error. </span><code class="t chip">int</code><span class="sans"> overflow wraps silently (no panic). </span><code class="chip">x++</code><span class="sans"> is a statement, not an expression.</span></p>
+</section>
+
+<!-- 07 Slices -->
+<section class="card col" id="s07">
+<h2><span class="no">07</span>Slices<em>COLLECTIONS</em></h2>
+<pre><span class="k">var</span> s []<span class="t">int</span>;  s := []<span class="t">int</span>{<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>};  s := <span class="b">make</span>([]<span class="t">int</span>, n)  <span class="c">/* n zeros */</span>
+s := <span class="b">make</span>([]<span class="t">int</span>, <span class="n">0</span>, n)           <span class="c">// len 0, cap n (append without realloc) </span><span class="star">★</span>
+g := <span class="b">make</span>([][]<span class="t">int</span>, n); <span class="k">for</span> i := <span class="k">range</span> g { g[i] = <span class="b">make</span>([]<span class="t">int</span>, m) }  <span class="c">// 2D grid </span><span class="star">★</span>
+s = <span class="b">append</span>(s, x);  s = <span class="b">append</span>(s, a, b);  s = <span class="b">append</span>(s, t...)   <span class="c">// always reassign </span><span class="star">★</span>
+<span class="b">len</span>(s)  <span class="b">cap</span>(s)  s[i]  s[<span class="b">len</span>(s)-<span class="n">1</span>]  s[<span class="n">1</span>:<span class="n">3</span>]  s[:k]  s[k:]  s[:]
+s = s[:<span class="b">len</span>(s)-<span class="n">1</span>]                 <span class="c">// pop</span>
+s = <span class="b">append</span>(s[:i], s[i+<span class="n">1</span>:]...)    <span class="c">// remove i (shifts; shares backing array)</span>
+s = <span class="b">append</span>(s[:i], <span class="b">append</span>([]<span class="t">int</span>{x}, s[i:]...)...)                  <span class="c">// insert at i</span>
+s[i], s[j] = s[j], s[i]          <span class="c">// swap</span>
+<span class="b">copy</span>(dst, src)                   <span class="c">// copies min(len) elements, returns count</span>
+c := <span class="b">make</span>([]<span class="t">int</span>, <span class="b">len</span>(s)); <span class="b">copy</span>(c, s)    <span class="c">/* clone */</span>    c := slices.<span class="T">Clone</span>(s)
+slices.<span class="T">Reverse</span>(s)  slices.<span class="T">Contains</span>(s, x)  slices.<span class="T">Index</span>(s, x)  slices.<span class="T">Max</span>(s)
+slices.<span class="T">Sort</span>(s)
+slices.<span class="T">SortFunc</span>(s, <span class="k">func</span>(a, b <span class="T">T</span>) <span class="t">int</span> { <span class="k">return</span> cmp.<span class="T">Compare</span>(a.k, b.k) })
+slices.<span class="T">BinarySearch</span>(s, x)  <span class="c">// (idx, found)      slices.Equal(a, b)</span>
+slices.<span class="T">Insert</span>(s, i, x)  slices.<span class="T">Delete</span>(s, i, j)  slices.<span class="T">Compact</span>(s)  <span class="c">/* dedup */</span></pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> </span><code class="chip">s[a:b]</code><span class="sans"> shares memory: appending to a sub-slice can overwrite the parent. Copy when in doubt. </span><code class="p chip">nil</code><span class="sans"> slice is fine with </span><code class="b chip">len</code><span class="sans chip"> /</span><code class="b chip"> append</code><span class="sans chip"> /</span><code class="s k0 chip"> range</code><span class="sans chip"> .</span></p>
+</section>
+
+<!-- 08 Array ↔ Slice · Conversion · Concat -->
+<section class="card col" id="s08">
+<h2><span class="no">08</span>Array ↔ Slice · Conversion · Concat<em>COLLECTIONS</em></h2>
+<pre><span class="k">var</span> a [<span class="n">26</span>]<span class="t">int</span>;  a := [<span class="n">3</span>]<span class="t">int</span>{<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>};  a := [...]<span class="t">int</span>{<span class="n">1</span>, <span class="n">2</span>}     <span class="c">// fixed, value type</span>
+cnt := [<span class="n">26</span>]<span class="t">int</span>{}; cnt[c-<span class="s">'a'</span>]++        <span class="c">// letter counts </span><span class="star">★</span><span class="c">;  arrays copy on assign!</span>
+s := a[:]                             <span class="c">// array -&gt; slice (shares memory)</span>
+<span class="k">var</span> b [<span class="n">3</span>]<span class="t">int</span> = [<span class="n">3</span>]<span class="t">int</span>(s)              <span class="c">// slice -&gt; array (Go 1.20+, len must match)</span>
+p := (*[<span class="n">3</span>]<span class="t">int</span>)(s)                     <span class="c">// slice -&gt; array pointer (shares)</span>
+<span class="c">// concatenation: append(dst, src...) is the one idiom </span><span class="star">★</span>
+c := <span class="b">append</span>(a, b...)                  <span class="c">// MAY alias a if cap(a) suffices </span><span class="star">★</span>
+c := <span class="b">append</span>([]<span class="t">int</span>{}, a...);  c = <span class="b">append</span>(c, b...)      <span class="c">// safe: fresh backing</span>
+c := slices.<span class="T">Concat</span>(a, b, d)           <span class="c">// Go 1.22+: always new slice </span><span class="star">★</span>
+c := <span class="b">append</span>(a[:<span class="b">len</span>(a):<span class="b">len</span>(a)], b...)  <span class="c">// full slice expr: force realloc</span>
+flat := slices.<span class="T">Concat</span>(grid...)        <span class="c">// [][]T -&gt; []T</span>
+strings.<span class="T">Join</span>(words, <span class="s">" "</span>)   strings.<span class="T">Split</span>(s, <span class="s">","</span>)   strings.<span class="T">Fields</span>(s)
+[]<span class="t">byte</span>(s)   <span class="t">string</span>(bs)   []<span class="t">rune</span>(s)   <span class="t">string</span>(rs)    <span class="c">// string &lt;-&gt; bytes/runes</span>
+strings.<span class="T">Repeat</span>(<span class="s">"ab"</span>, <span class="n">3</span>)   bytes.<span class="T">Repeat</span>([]<span class="t">byte</span>(<span class="s">"ab"</span>), <span class="n">3</span>)</pre>
+</section>
+
+<!-- 09 Maps · Sets -->
+<section class="card col" id="s09">
+<h2><span class="no">09</span>Maps · Sets<em>COLLECTIONS</em></h2>
+<pre>m := <span class="k">map</span>[<span class="t">string</span>]<span class="t">int</span>{};  m := <span class="b">make</span>(<span class="k">map</span>[<span class="t">string</span>]<span class="t">int</span>, n);  m := <span class="k">map</span>[<span class="t">string</span>]<span class="t">int</span>{<span class="s">"a"</span>: <span class="n">1</span>}
+m[k] = v;  v := m[k]  <span class="c">/* zero value if missing </span><span class="star">★</span><span class="c"> */</span>   <span class="b">delete</span>(m, k)   <span class="b">len</span>(m)
+v, ok := m[k]            <span class="c">// ok: present?        if _, ok := m[k]; !ok { }</span>
+m[k]++                   <span class="c">// counting </span><span class="star">★</span><span class="c"> (missing -&gt; 0 -&gt; 1)</span>
+m[k] = <span class="b">append</span>(m[k], x)   <span class="c">// adjacency list </span><span class="star">★</span><span class="c"> (nil slice append is fine)</span>
+<span class="k">for</span> k, v := <span class="k">range</span> m { }  <span class="c">// random order! sort keys for determinism:</span>
+keys := <span class="b">make</span>([]<span class="t">string</span>, <span class="n">0</span>, <span class="b">len</span>(m)); <span class="k">for</span> k := <span class="k">range</span> m { keys = <span class="b">append</span>(keys, k) }
+sort.<span class="T">Strings</span>(keys)       <span class="c">// or slices.Sorted(maps.Keys(m))   (Go 1.23)</span>
+<span class="b">clear</span>(m)                 <span class="c">// Go 1.21</span>
+<span class="c">// set = map[T]struct{} (0 bytes) or map[T]bool</span>
+seen := <span class="k">map</span>[<span class="t">int</span>]<span class="k">struct</span>{}{};  seen[x] = <span class="k">struct</span>{}{};  _, has := seen[x]
+seen := <span class="k">map</span>[<span class="t">int</span>]<span class="t">bool</span>{};  seen[x] = <span class="p">true</span>;  <span class="k">if</span> seen[x] { }               <span class="c">// simpler</span>
+<span class="c">// map keys must be comparable: struct{x, y int}, [2]int ok; slices NOT</span>
+dist := <span class="k">map</span>[[<span class="n">2</span>]<span class="t">int</span>]<span class="t">int</span>{};  dist[[<span class="n">2</span>]<span class="t">int</span>{r, c}] = <span class="n">0</span>
+<span class="k">type</span> <span class="T">P</span> <span class="k">struct</span>{ <span class="T">X</span>, <span class="T">Y</span> <span class="t">int</span> };  m := <span class="k">map</span>[<span class="T">P</span>]<span class="t">bool</span>{};  m[<span class="T">P</span>{<span class="n">1</span>, <span class="n">2</span>}] = <span class="p">true</span></pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> </span><code class="s k0 chip">var</code><code class="chip"> m </code><code class="s k0 chip">map</code><code class="chip"> [</code><code class="T chip">K</code><code class="chip">]</code><code class="T chip">V</code><span class="sans"> is nil: reading is fine, writing PANICS → use </span><code class="b chip">make</code><span class="sans"> . Map values are not addressable:</span><code class="chip"> m[k].field = </code><code class="n chip">1</code><span class="sans"> won't compile — copy, modify, store back (or store pointers).</span></p>
+</section>
+
+<!-- 10 Strings · Bytes · Runes -->
+<section class="card col" id="s10">
+<h2><span class="no">10</span>Strings · Bytes · Runes<em>COLLECTIONS</em></h2>
+<pre>s := <span class="s">"héllo"</span>;  <span class="b">len</span>(s)  <span class="c">/* bytes: 6 */</span>   utf8.<span class="T">RuneCountInString</span>(s)  <span class="c">/* chars: 5 */</span>
+s[i]                       <span class="c">// byte (uint8), NOT char;  s[1:3] byte slice</span>
+<span class="k">for</span> i, r := <span class="k">range</span> s { }    <span class="c">// decodes runes; i = byte offset</span>
+rs := []<span class="t">rune</span>(s);  rs[<span class="n">1</span>]    <span class="c">// index by char </span><span class="star">★</span><span class="c">;  string(rs)</span>
+bs := []<span class="t">byte</span>(s);  bs[<span class="n">0</span>] = <span class="s">'H'</span>;  s = <span class="t">string</span>(bs)      <span class="c">// strings are immutable</span>
+s + t   fmt.<span class="T">Sprintf</span>   strings.<span class="T">Builder</span> (loops)   strings.<span class="T">Join</span>(parts, <span class="s">""</span>)
+strings.<span class="T">Contains</span>(s, <span class="s">"x"</span>)  .<span class="T">HasPrefix</span>  .<span class="T">HasSuffix</span>  .<span class="T">Index</span>(s, <span class="s">"x"</span>)  <span class="c">/* -1 */</span>
+strings.<span class="T">ToUpper</span>  .<span class="T">ToLower</span>  .<span class="T">TrimSpace</span>  .<span class="T">Trim</span>(s, <span class="s">"ab"</span>)  .<span class="T">TrimLeft</span>  .<span class="T">TrimPrefix</span>
+strings.<span class="T">Split</span>(s, <span class="s">","</span>)  .<span class="T">Fields</span>(s)  .<span class="T">SplitN</span>(s, <span class="s">":"</span>, <span class="n">2</span>)
+before, after, found := strings.<span class="T">Cut</span>(s, <span class="s">"="</span>)
+strings.<span class="T">Replace</span>(s, <span class="s">"a"</span>, <span class="s">"b"</span>, -<span class="n">1</span>)  .<span class="T">ReplaceAll</span>  .<span class="T">Repeat</span>  .<span class="T">Count</span>  .<span class="T">EqualFold</span>
+strings.<span class="T">Compare</span>(a, b)   a &lt; b   <span class="c">// lexicographic byte compare works directly</span>
+<span class="c">// reverse a string (by runes)</span>
+rs := []<span class="t">rune</span>(s)
+<span class="k">for</span> i, j := <span class="n">0</span>, <span class="b">len</span>(rs)-<span class="n">1</span>; i &lt; j; i, j = i+<span class="n">1</span>, j-<span class="n">1</span> { rs[i], rs[j] = rs[j], rs[i] }
+unicode.<span class="T">IsLetter</span>(r)  .<span class="T">IsDigit</span>  .<span class="T">IsSpace</span>  .<span class="T">IsUpper</span>  .<span class="T">ToLower</span>(r)   <span class="c">// for runes</span>
+<span class="s">'a'</span> &lt;= c &amp;&amp; c &lt;= <span class="s">'z'</span>   c - <span class="s">'0'</span>   <span class="t">byte</span>(<span class="s">'a'</span> + i)      <span class="c">// bytes, ASCII fast path </span><span class="star">★</span>
+strconv.<span class="T">Quote</span>(s)   strconv.<span class="T">ParseBool</span>(<span class="s">"true"</span>)   strconv.<span class="T">AppendInt</span>(buf, n, <span class="n">10</span>)</pre>
+</section>
+
+<!-- 11 sort · container/heap · list -->
+<section class="card col" id="s11">
+<h2><span class="no">11</span>sort · container/heap · list<em>COLLECTIONS</em></h2>
+<pre>sort.<span class="T">Ints</span>(a)  sort.<span class="T">Strings</span>(s)  sort.<span class="T">Float64s</span>(f)        <span class="c">// ascending, in place</span>
+sort.<span class="T">Sort</span>(sort.<span class="T">Reverse</span>(sort.<span class="T">IntSlice</span>(a)))               <span class="c">// descending</span>
+sort.<span class="T">Slice</span>(ps, <span class="k">func</span>(i, j <span class="t">int</span>) <span class="t">bool</span> { <span class="k">return</span> ps[i].age &lt; ps[j].age })    <span class="c">// </span><span class="star">★</span>
+sort.<span class="T">SliceStable</span>(ps, <span class="k">func</span>(i, j <span class="t">int</span>) <span class="t">bool</span> {       <span class="c">// multi-key: score desc, name asc</span>
+    <span class="k">if</span> ps[i].s != ps[j].s { <span class="k">return</span> ps[i].s &gt; ps[j].s }; <span class="k">return</span> ps[i].n &lt; ps[j].n })
+slices.<span class="T">SortFunc</span>(ps, <span class="k">func</span>(a, b <span class="T">P</span>) <span class="t">int</span> {                  <span class="c">// Go 1.21 style, faster</span>
+    <span class="k">return</span> cmp.<span class="T">Or</span>(cmp.<span class="T">Compare</span>(b.s, a.s), cmp.<span class="T">Compare</span>(a.n, b.n)) })
+i := sort.<span class="T">SearchInts</span>(a, x)                              <span class="c">// lower_bound </span><span class="star">★</span>
+i := sort.<span class="T">Search</span>(n, <span class="k">func</span>(i <span class="t">int</span>) <span class="t">bool</span> { <span class="k">return</span> a[i] &gt;= x })  <span class="c">// first i: pred true</span>
+<span class="c">// min-heap via container/heap: implement 5 methods </span><span class="star">★</span>
+<span class="k">type</span> <span class="T">IntHeap</span> []<span class="t">int</span>
+<span class="k">func</span> (h <span class="T">IntHeap</span>) <span class="T">Len</span>() <span class="t">int</span>           { <span class="k">return</span> <span class="b">len</span>(h) }
+<span class="k">func</span> (h <span class="T">IntHeap</span>) <span class="T">Less</span>(i, j <span class="t">int</span>) <span class="t">bool</span> { <span class="k">return</span> h[i] &lt; h[j] }   <span class="c">// &gt; for max-heap</span>
+<span class="k">func</span> (h <span class="T">IntHeap</span>) <span class="T">Swap</span>(i, j <span class="t">int</span>)      { h[i], h[j] = h[j], h[i] }
+<span class="k">func</span> (h *<span class="T">IntHeap</span>) <span class="T">Push</span>(x <span class="t">any</span>)        { *h = <span class="b">append</span>(*h, x.(<span class="t">int</span>)) }
+<span class="k">func</span> (h *<span class="T">IntHeap</span>) <span class="T">Pop</span>() <span class="t">any</span> { o := *h; n := <span class="b">len</span>(o); x := o[n-<span class="n">1</span>]
+    *h = o[:n-<span class="n">1</span>]; <span class="k">return</span> x }
+h := &amp;<span class="T">IntHeap</span>{<span class="n">3</span>, <span class="n">1</span>}; heap.<span class="T">Init</span>(h); heap.<span class="T">Push</span>(h, <span class="n">2</span>)
+x := heap.<span class="T">Pop</span>(h).(<span class="t">int</span>);  (*h)[<span class="n">0</span>] <span class="c">/* peek */</span>   h.<span class="T">Len</span>()
+<span class="c">// queue / deque: a slice is enough  q = append(q, x); x, q = q[0], q[1:]</span></pre>
+</section>
+
+<!-- 12 Struct · Methods · Interfaces -->
+<section class="card typ" id="s12">
+<h2><span class="no">12</span>Struct · Methods · Interfaces<em>TYPES &amp; ERRORS</em></h2>
+<pre><span class="k">type</span> <span class="T">P</span> <span class="k">struct</span> { <span class="T">X</span>, <span class="T">Y</span> <span class="t">int</span>; <span class="T">Name</span> <span class="t">string</span> `json:<span class="s">"name"</span>` }
+p := <span class="T">P</span>{<span class="n">1</span>, <span class="n">2</span>, <span class="s">"a"</span>};  p := <span class="T">P</span>{<span class="T">X</span>: <span class="n">1</span>};  pp := &amp;<span class="T">P</span>{<span class="T">X</span>: <span class="n">1</span>};  <span class="k">var</span> z <span class="T">P</span>  <span class="c">/* zero value */</span>
+p.<span class="T">X</span>  pp.<span class="T">X</span>  <span class="c">/* auto-deref */</span>   (*pp).<span class="T">X</span>   p2 := p  <span class="c">/* copy! structs are values */</span>
+<span class="k">func</span> (p <span class="T">P</span>) <span class="T">Dist</span>() <span class="t">int</span> { <span class="k">return</span> abs(p.<span class="T">X</span>) + abs(p.<span class="T">Y</span>) }     <span class="c">// value receiver: copy</span>
+<span class="k">func</span> (p *<span class="T">P</span>) <span class="T">Shift</span>(d <span class="t">int</span>) { p.<span class="T">X</span> += d }                <span class="c">// pointer receiver: mutates </span><span class="star">★</span>
+p.<span class="T">Shift</span>(<span class="n">1</span>)   <span class="c">// Go auto-takes &amp;p;  but a map value / slice elem must be addressable</span>
+<span class="k">type</span> <span class="T">Stack</span> <span class="k">struct</span>{ items []<span class="t">int</span> }                      <span class="c">// embedding = composition</span>
+<span class="k">type</span> <span class="T">Named</span> <span class="k">struct</span>{ <span class="T">P</span>; <span class="T">Tag</span> <span class="t">string</span> };  n.<span class="T">X</span>   n.<span class="T">P</span>.<span class="T">X</span>           <span class="c">// promoted fields</span>
+<span class="k">type</span> <span class="T">Shape</span> <span class="k">interface</span> { <span class="T">Area</span>() <span class="t">float64</span> }               <span class="c">// implicit implementation </span><span class="star">★</span>
+<span class="k">type</span> <span class="T">Circle</span> <span class="k">struct</span>{ <span class="T">R</span> <span class="t">float64</span> }
+<span class="k">func</span> (c <span class="T">Circle</span>) <span class="T">Area</span>() <span class="t">float64</span> { <span class="k">return</span> <span class="n">3.14</span> * c.<span class="T">R</span> * c.<span class="T">R</span> }
+<span class="k">var</span> s <span class="T">Shape</span> = <span class="T">Circle</span>{<span class="n">2</span>}                               <span class="c">// no "implements" keyword</span>
+shapes := []<span class="T">Shape</span>{<span class="T">Circle</span>{<span class="n">1</span>}, <span class="T">Rect</span>{<span class="n">2</span>, <span class="n">3</span>}}
+<span class="k">if</span> c, ok := s.(<span class="T">Circle</span>); ok { }                            <span class="c">// type assertion</span>
+<span class="k">func</span> (p <span class="T">P</span>) <span class="T">String</span>() <span class="t">string</span> { <span class="k">return</span> fmt.<span class="T">Sprintf</span>(<span class="s">"(%d,%d)"</span>, p.<span class="T">X</span>, p.<span class="T">Y</span>) }  <span class="c">// Stringer</span>
+<span class="k">var</span> _ <span class="T">Shape</span> = (*<span class="T">Circle</span>)(<span class="p">nil</span>)                              <span class="c">// compile-time check</span>
+<span class="k">type</span> <span class="T">Color</span> <span class="t">int</span>;  <span class="k">const</span> ( <span class="T">Red</span> <span class="T">Color</span> = <span class="p">iota</span>; <span class="T">Green</span>; <span class="T">Blue</span> )  <span class="c">// enum</span>
+<span class="k">func</span> (c <span class="T">Color</span>) <span class="T">String</span>() <span class="t">string</span> { <span class="k">return</span> [...]<span class="t">string</span>{<span class="s">"R"</span>, <span class="s">"G"</span>, <span class="s">"B"</span>}[c] }</pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> A method with a pointer receiver means only </span><code class="chip">*</code><code class="T chip">T</code><span class="sans"> satisfies the interface, not </span><code class="T chip">T</code><span class="sans"> . Interface holding a typed nil pointer is NOT </span><code class="chip">== </code><code class="p chip">nil</code><span class="sans chip"> .</span></p>
+</section>
+
+<!-- 13 Pointers · Values · Zero Values -->
+<section class="card typ" id="s13">
+<h2><span class="no">13</span>Pointers · Values · Zero Values<em>TYPES &amp; ERRORS</em></h2>
+<pre><span class="k">var</span> p *<span class="t">int</span>;  p = &amp;x;  *p = <span class="n">5</span>;  p == <span class="p">nil</span>          <span class="c">// no pointer arithmetic</span>
+q := <span class="b">new</span>(<span class="t">int</span>)       <span class="c">// *int pointing at 0;   &amp;T{} idiom for structs </span><span class="star">★</span>
+<span class="k">func</span> inc(n *<span class="t">int</span>) { *n++ }   inc(&amp;x)              <span class="c">// pass pointer to mutate</span>
+<span class="k">func</span> f(s []<span class="t">int</span>) { s[<span class="n">0</span>] = <span class="n">9</span> }   <span class="c">// slices/maps/chans share data: mutation visible </span><span class="star">★</span>
+<span class="k">func</span> g(s []<span class="t">int</span>) { s = <span class="b">append</span>(s, <span class="n">1</span>) }  <span class="c">// but append may not be visible: return it</span>
+<span class="c">// zero values: 0  ""  false  nil (ptr/slice/map/chan/func/interface)  struct{..}</span>
+<span class="k">var</span> wg sync.<span class="T">WaitGroup</span>; <span class="k">var</span> mu sync.<span class="T">Mutex</span>; <span class="k">var</span> sb strings.<span class="T">Builder</span> <span class="c">// zero = ready </span><span class="star">★</span>
+a == b   <span class="c">// structs/arrays comparable if all fields are; slices/maps only vs nil</span>
+reflect.<span class="T">DeepEqual</span>(a, b)   slices.<span class="T">Equal</span>(a, b)   maps.<span class="T">Equal</span>(a, b)</pre>
+</section>
+
+<!-- 14 Errors · panic · recover -->
+<section class="card typ" id="s14">
+<h2><span class="no">14</span>Errors · panic · recover<em>TYPES &amp; ERRORS</em></h2>
+<pre><span class="k">func</span> parse(s <span class="t">string</span>) (<span class="t">int</span>, <span class="t">error</span>) {
+    n, err := strconv.<span class="T">Atoi</span>(s)
+    <span class="k">if</span> err != <span class="p">nil</span> { <span class="k">return</span> <span class="n">0</span>, fmt.<span class="T">Errorf</span>(<span class="s">"parse %q: %w"</span>, s, err) }  <span class="c">// wrap: %w </span><span class="star">★</span>
+    <span class="k">if</span> n &lt; <span class="n">0</span> { <span class="k">return</span> <span class="n">0</span>, errors.<span class="T">New</span>(<span class="s">"negative"</span>) }
+    <span class="k">return</span> n, <span class="p">nil</span>
+}
+n, err := parse(s); <span class="k">if</span> err != <span class="p">nil</span> { <span class="k">return</span> err }     <span class="c">// the idiom: check &amp; return </span><span class="star">★</span>
+<span class="k">var</span> <span class="T">ErrNotFound</span> = errors.<span class="T">New</span>(<span class="s">"not found"</span>)                  <span class="c">// sentinel</span>
+<span class="k">if</span> errors.<span class="T">Is</span>(err, <span class="T">ErrNotFound</span>) { }                         <span class="c">// matches through wraps</span>
+<span class="k">var</span> pe *os.<span class="T">PathError</span>; <span class="k">if</span> errors.<span class="T">As</span>(err, &amp;pe) { pe.<span class="T">Path</span> }   <span class="c">// extract typed error</span>
+<span class="k">type</span> <span class="T">MyErr</span> <span class="k">struct</span>{ <span class="T">Code</span> <span class="t">int</span> };  <span class="k">func</span> (e *<span class="T">MyErr</span>) <span class="T">Error</span>() <span class="t">string</span> { <span class="k">return</span> <span class="s">"..."</span> }
+errors.<span class="T">Join</span>(e1, e2)   err.<span class="T">Error</span>()   log.<span class="T">Fatal</span>(err)  <span class="c">/* exit 1 */</span>   os.<span class="T">Exit</span>(<span class="n">1</span>)
+<span class="b">panic</span>(<span class="s">"bad"</span>)   <span class="c">// unwinds, runs defers;  index out of range / nil map write panic</span>
+<span class="k">defer</span> <span class="k">func</span>() { <span class="k">if</span> r := <span class="b">recover</span>(); r != <span class="p">nil</span> { err = fmt.<span class="T">Errorf</span>(<span class="s">"rec: %v"</span>, r) } }()
+_ = x   <span class="c">// discard;   _, err := f()   // ignore value, keep error</span></pre>
+</section>
+
+<!-- 15 Goroutines · Channels -->
+<section class="card con" id="s15">
+<h2><span class="no">15</span>Goroutines · Channels<em>CONCURRENCY</em></h2>
+<pre><span class="k">go</span> f(x)   <span class="k">go</span> <span class="k">func</span>() { ... }()        <span class="c">// lightweight thread; main exits = all die </span><span class="star">★</span>
+ch := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>)                 <span class="c">// unbuffered: send blocks until received</span>
+ch := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>, <span class="n">16</span>)             <span class="c">// buffered: send blocks only when full</span>
+ch &lt;- v                              <span class="c">// send       v := &lt;-ch   // receive (blocks)</span>
+v, ok := &lt;-ch                        <span class="c">// ok=false when closed &amp; drained</span>
+<span class="b">close</span>(ch)                            <span class="c">// only the SENDER closes </span><span class="star">★</span><span class="c">; send after: panic</span>
+<span class="k">for</span> v := <span class="k">range</span> ch { }                <span class="c">// loops until closed </span><span class="star">★</span>
+<span class="k">var</span> send <span class="k">chan</span>&lt;- <span class="t">int</span> = ch;  <span class="k">var</span> recv &lt;-<span class="k">chan</span> <span class="t">int</span> = ch   <span class="c">// direction-typed params</span>
+<span class="k">select</span> {                             <span class="c">// wait on multiple channels</span>
+<span class="k">case</span> v := &lt;-a:        use(v)
+<span class="k">case</span> b &lt;- x:          sent()
+<span class="k">case</span> &lt;-time.<span class="T">After</span>(time.<span class="T">Second</span>): timeout()
+<span class="k">case</span> &lt;-ctx.<span class="T">Done</span>():    <span class="k">return</span> ctx.<span class="T">Err</span>()
+<span class="k">default</span>:              nonBlocking()  <span class="c">// only if nothing is ready</span>
+}
+<span class="k">var</span> wg sync.<span class="T">WaitGroup</span>
+<span class="k">for</span> i := <span class="k">range</span> n { wg.<span class="T">Add</span>(<span class="n">1</span>); <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> wg.<span class="T">Done</span>(); work(i) }() }
+wg.<span class="T">Wait</span>()                            <span class="c">// Go 1.25: wg.Go(func(){ work() })</span>
+<span class="k">var</span> mu sync.<span class="T">Mutex</span>; mu.<span class="T">Lock</span>(); cnt++; mu.<span class="T">Unlock</span>()   <span class="c">// or defer mu.Unlock()</span>
+<span class="k">var</span> n atomic.<span class="T">Int64</span>; n.<span class="T">Add</span>(<span class="n">1</span>); n.<span class="T">Load</span>()             <span class="c">// lock-free counter</span>
+<span class="k">var</span> once sync.<span class="T">Once</span>; once.<span class="T">Do</span>(initFn)   sync.<span class="T">RWMutex</span>  <span class="T">RLock</span>/<span class="T">RUnlock</span></pre>
+<p class="note"><span class="lbl">Traps</span><span class="sans"> Deadlock: "all goroutines are asleep" — unbuffered send with no receiver, or </span><code class="s k0 chip">range</code><span class="sans"> on a channel nobody closes. Reading a nil channel blocks forever. Run with </span><code class="chip">-race</code><span class="sans chip"> .</span></p>
+</section>
+
+<!-- 16 Producer → Multiple Consumers -->
+<section class="card con" id="s16">
+<h2><span class="no">16</span>Producer → Multiple Consumers <small>worker pool ★</small><em>CONCURRENCY</em></h2>
+<pre><span class="k">func</span> worker(id <span class="t">int</span>, jobs &lt;-<span class="k">chan</span> <span class="t">int</span>, results <span class="k">chan</span>&lt;- <span class="T">Result</span>, wg *sync.<span class="T">WaitGroup</span>) {
+    <span class="k">defer</span> wg.<span class="T">Done</span>()
+    <span class="k">for</span> j := <span class="k">range</span> jobs {                    <span class="c">// each job goes to exactly one worker</span>
+        results &lt;- <span class="T">Result</span>{id, j, j * j}       <span class="c">// channels are MPMC-safe by design </span><span class="star">★</span>
+    }
+}
+<span class="k">func</span> main() {
+    jobs := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>, <span class="n">100</span>)
+    results := <span class="b">make</span>(<span class="k">chan</span> <span class="T">Result</span>, <span class="n">100</span>)
+    <span class="k">var</span> wg sync.<span class="T">WaitGroup</span>
+    <span class="k">for</span> w := <span class="n">1</span>; w &lt;= <span class="n">4</span>; w++ {                 <span class="c">// N consumers</span>
+        wg.<span class="T">Add</span>(<span class="n">1</span>)
+        <span class="k">go</span> worker(w, jobs, results, &amp;wg)
+    }
+    <span class="k">go</span> <span class="k">func</span>() {                               <span class="c">// 1 producer</span>
+        <span class="k">for</span> i := <span class="n">0</span>; i &lt; <span class="n">20</span>; i++ { jobs &lt;- i }
+        <span class="b">close</span>(jobs)                           <span class="c">// signals workers: no more work </span><span class="star">★</span>
+    }()
+    <span class="k">go</span> <span class="k">func</span>() { wg.<span class="T">Wait</span>(); <span class="b">close</span>(results) }() <span class="c">// close results after workers exit </span><span class="star">★</span>
+    <span class="k">for</span> r := <span class="k">range</span> results { fmt.<span class="T">Println</span>(r) } <span class="c">// consume until closed</span>
+}
+<span class="c">// variants</span>
+sem := <span class="b">make</span>(<span class="k">chan</span> <span class="k">struct</span>{}, <span class="n">4</span>)                 <span class="c">// semaphore: limit concurrency to 4</span>
+<span class="k">for</span> _, j := <span class="k">range</span> jobs {
+    sem &lt;- <span class="k">struct</span>{}{}; <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> <span class="k">func</span>() { &lt;-sem }(); do(j) }() }
+<span class="c">// bounded fan-in with errgroup (golang.org/x/sync):</span>
+g, ctx := errgroup.<span class="T">WithContext</span>(ctx); g.<span class="T">SetLimit</span>(<span class="n">4</span>)
+<span class="k">for</span> _, j := <span class="k">range</span> jobs { g.<span class="T">Go</span>(<span class="k">func</span>() <span class="t">error</span> { <span class="k">return</span> do(ctx, j) }) }
+<span class="k">if</span> err := g.<span class="T">Wait</span>(); err != <span class="p">nil</span> { }            <span class="c">// first error cancels ctx</span>
+<span class="c">// broadcast to ALL consumers (not a queue): close(done) wakes every &lt;-done </span><span class="star">★</span></pre>
+<p class="note"><span class="lbl">Order</span><span class="sans"> ① start workers ② producer sends + closes jobs ③ wg.Wait then close results ④ range results. Closing</span><code class="chip"> results</code><span class="sans"> from a worker = panic when another worker sends.</span></p>
+</section>
+
+<!-- 17 Pipelines · Fan-out / Fan-in · Context -->
+<section class="card con" id="s17">
+<h2><span class="no">17</span>Pipelines · Fan-out / Fan-in · Context<em>CONCURRENCY</em></h2>
+<pre><span class="c">// stage: in-channel -&gt; out-channel, each stage a goroutine</span>
+<span class="k">func</span> gen(nums ...<span class="t">int</span>) &lt;-<span class="k">chan</span> <span class="t">int</span> { out := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>)
+    <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> <span class="b">close</span>(out); <span class="k">for</span> _, n := <span class="k">range</span> nums { out &lt;- n } }()
+    <span class="k">return</span> out }
+<span class="k">func</span> sq(in &lt;-<span class="k">chan</span> <span class="t">int</span>) &lt;-<span class="k">chan</span> <span class="t">int</span> { out := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>)
+    <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> <span class="b">close</span>(out); <span class="k">for</span> n := <span class="k">range</span> in { out &lt;- n * n } }()
+    <span class="k">return</span> out }
+<span class="k">for</span> v := <span class="k">range</span> sq(sq(gen(<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>))) { }                      <span class="c">// compose</span>
+<span class="c">// fan-out: run N copies of a stage on the same input; fan-in: merge their outputs</span>
+<span class="k">func</span> merge(cs ...&lt;-<span class="k">chan</span> <span class="t">int</span>) &lt;-<span class="k">chan</span> <span class="t">int</span> {
+    out := <span class="b">make</span>(<span class="k">chan</span> <span class="t">int</span>); <span class="k">var</span> wg sync.<span class="T">WaitGroup</span>; wg.<span class="T">Add</span>(<span class="b">len</span>(cs))
+    <span class="k">for</span> _, c := <span class="k">range</span> cs {
+        <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> wg.<span class="T">Done</span>(); <span class="k">for</span> v := <span class="k">range</span> c { out &lt;- v } }() }
+    <span class="k">go</span> <span class="k">func</span>() { wg.<span class="T">Wait</span>(); <span class="b">close</span>(out) }()
+    <span class="k">return</span> out }
+c1, c2 := sq(in), sq(in); <span class="k">for</span> v := <span class="k">range</span> merge(c1, c2) { }
+<span class="c">// cancellation &amp; timeouts with context </span><span class="star">★</span>
+ctx, cancel := context.<span class="T">WithTimeout</span>(context.<span class="T">Background</span>(), <span class="n">2</span>*time.<span class="T">Second</span>)
+<span class="k">defer</span> cancel()
+ctx, cancel := context.<span class="T">WithCancel</span>(ctx)        <span class="c">// cancel() to stop all listeners</span>
+<span class="k">select</span> { <span class="k">case</span> out &lt;- v: <span class="k">case</span> &lt;-ctx.<span class="T">Done</span>(): <span class="k">return</span> ctx.<span class="T">Err</span>() }  <span class="c">// cancellable send</span>
+<span class="c">// collect results from N goroutines in order (distinct slice index = safe)</span>
+res := <span class="b">make</span>([]<span class="t">int</span>, n); <span class="k">var</span> wg sync.<span class="T">WaitGroup</span>
+<span class="k">for</span> i := <span class="k">range</span> n { wg.<span class="T">Add</span>(<span class="n">1</span>); <span class="k">go</span> <span class="k">func</span>() { <span class="k">defer</span> wg.<span class="T">Done</span>(); res[i] = f(i) }() }
+wg.<span class="T">Wait</span>()
+time.<span class="T">Sleep</span>(<span class="n">10</span> * time.<span class="T">Millisecond</span>)  time.<span class="T">Now</span>()  time.<span class="T">Since</span>(t0)  time.<span class="T">NewTicker</span>(d)</pre>
+</section>
+
+<!-- 18 JSON · encoding/json -->
+<section class="card json" id="s18">
+<h2><span class="no">18</span>JSON · encoding/json <small>struct tags drive everything</small><em>JSON</em></h2>
+<pre><span class="k">type</span> <span class="T">User</span> <span class="k">struct</span> {
+    <span class="T">ID</span>    <span class="t">int</span>      `json:<span class="s">"id"</span>`
+    <span class="T">Name</span>  <span class="t">string</span>   `json:<span class="s">"name"</span>`
+    <span class="T">Email</span> *<span class="t">string</span>  `json:<span class="s">"email,omitempty"</span>`   <span class="c">// nil -&gt; omitted; null -&gt; nil</span>
+    <span class="T">Tags</span>  []<span class="t">string</span> `json:<span class="s">"tags,omitempty"</span>`    <span class="c">// missing -&gt; nil slice</span>
+    <span class="T">Kind</span>  <span class="t">string</span>   `json:<span class="s">"type"</span>`              <span class="c">// rename</span>
+    pw    <span class="t">string</span>                              <span class="c">// unexported: never (de)serialized</span>
+    <span class="T">Skip</span>  <span class="t">string</span>   `json:<span class="s">"-"</span>`
+}
+<span class="k">var</span> u <span class="T">User</span>; err := json.<span class="T">Unmarshal</span>([]<span class="t">byte</span>(s), &amp;u)   <span class="c">// bytes -&gt; struct (pointer!) </span><span class="star">★</span>
+<span class="k">var</span> us []<span class="T">User</span>; json.<span class="T">Unmarshal</span>(data, &amp;us)           <span class="c">// JSON array</span>
+b, _ := json.<span class="T">Marshal</span>(u);  <span class="t">string</span>(b)                <span class="c">// struct -&gt; bytes</span>
+b, _ := json.<span class="T">MarshalIndent</span>(u, <span class="s">""</span>, <span class="s">"  "</span>)            <span class="c">// pretty</span>
+json.<span class="T">NewDecoder</span>(os.<span class="T">Stdin</span>).<span class="T">Decode</span>(&amp;u)               <span class="c">// from reader (stdin/file/http)</span>
+json.<span class="T">NewEncoder</span>(w).<span class="T">Encode</span>(u)                       <span class="c">// to writer</span>
+<span class="c">// untyped: map / any</span>
+<span class="k">var</span> v <span class="k">map</span>[<span class="t">string</span>]<span class="t">any</span>; json.<span class="T">Unmarshal</span>(data, &amp;v)
+v[<span class="s">"a"</span>].(<span class="k">map</span>[<span class="t">string</span>]<span class="t">any</span>)[<span class="s">"b"</span>].([]<span class="t">any</span>)[<span class="n">0</span>].(<span class="t">float64</span>)  <span class="c">// numbers are float64! </span><span class="star">★</span>
+<span class="k">if</span> arr, ok := v[<span class="s">"tags"</span>].([]<span class="t">any</span>); ok { }
+<span class="k">var</span> raw <span class="k">map</span>[<span class="t">string</span>]json.<span class="T">RawMessage</span>                 <span class="c">// defer parsing of fields</span>
+m := <span class="k">map</span>[<span class="t">string</span>]<span class="t">any</span>{<span class="s">"id"</span>: <span class="n">1</span>, <span class="s">"ok"</span>: <span class="p">true</span>, <span class="s">"n"</span>: <span class="p">nil</span>}; json.<span class="T">Marshal</span>(m) <span class="c">// keys sorted</span>
+<span class="c">// custom (un)marshal</span>
+<span class="k">func</span> (c <span class="T">Color</span>) <span class="T">MarshalJSON</span>() ([]<span class="t">byte</span>, <span class="t">error</span>) { <span class="k">return</span> json.<span class="T">Marshal</span>(c.<span class="T">String</span>()) }
+<span class="k">func</span> (c *<span class="T">Color</span>) <span class="T">UnmarshalJSON</span>(b []<span class="t">byte</span>) <span class="t">error</span> { <span class="k">var</span> s <span class="t">string</span>; .. }
+dec := json.<span class="T">NewDecoder</span>(r); <span class="k">for</span> dec.<span class="T">More</span>() { <span class="k">var</span> m <span class="T">Msg</span>; dec.<span class="T">Decode</span>(&amp;m) }  <span class="c">// NDJSON</span></pre>
+<p class="note"><span class="lbl">Trap</span><span class="sans"> Fields must be exported (Capitalized) or they're silently ignored. </span><code class="T chip">Unmarshal</code><span class="sans"> into a non-pointer silently does nothing useful. Unknown fields are ignored unless </span><code class="chip">dec.</code><code class="T chip">DisallowUnknownFields</code><code class="chip">()</code><span class="sans"> .</span></p>
+</section>
+
+<!-- 19 Algorithm Templates -->
+<section class="card alg" id="s19">
+<h2><span class="no">19</span>Algorithm Templates<em>ALGORITHMS</em></h2>
+<pre><span class="c">// BFS on a grid</span>
+<span class="k">type</span> pt <span class="k">struct</span>{ r, c <span class="t">int</span> }
+dirs := [<span class="n">4</span>]pt{{<span class="n">0</span>, <span class="n">1</span>}, {<span class="n">1</span>, <span class="n">0</span>}, {<span class="n">0</span>, -<span class="n">1</span>}, {-<span class="n">1</span>, <span class="n">0</span>}}
+dist := <span class="b">make</span>([][]<span class="t">int</span>, n)
+<span class="k">for</span> i := <span class="k">range</span> dist { dist[i] = slices.<span class="T">Repeat</span>([]<span class="t">int</span>{-<span class="n">1</span>}, m) }
+dist[sr][sc] = <span class="n">0</span>; q := []pt{{sr, sc}}
+<span class="k">for</span> <span class="b">len</span>(q) &gt; <span class="n">0</span> {
+    cur := q[<span class="n">0</span>]; q = q[<span class="n">1</span>:]
+    <span class="k">for</span> _, d := <span class="k">range</span> dirs {
+        nr, nc := cur.r+d.r, cur.c+d.c
+        <span class="k">if</span> nr &lt; <span class="n">0</span> || nc &lt; <span class="n">0</span> || nr &gt;= n || nc &gt;= m { <span class="k">continue</span> }
+        <span class="k">if</span> grid[nr][nc] == <span class="s">'#'</span> || dist[nr][nc] != -<span class="n">1</span> { <span class="k">continue</span> }
+        dist[nr][nc] = dist[cur.r][cur.c] + <span class="n">1</span>; q = <span class="b">append</span>(q, pt{nr, nc})
+    }
+}
+<span class="c">// Dijkstra with container/heap (type Item struct{d, u int}; Less by d)</span>
+dist := slices.<span class="T">Repeat</span>([]<span class="t">int</span>{math.<span class="T">MaxInt</span>}, n); dist[s] = <span class="n">0</span>
+pq := &amp;<span class="T">PQ</span>{{<span class="n">0</span>, s}}; heap.<span class="T">Init</span>(pq)
+<span class="k">for</span> pq.<span class="T">Len</span>() &gt; <span class="n">0</span> {
+    it := heap.<span class="T">Pop</span>(pq).(<span class="T">Item</span>); <span class="k">if</span> it.d &gt; dist[it.u] { <span class="k">continue</span> }
+    <span class="k">for</span> _, e := <span class="k">range</span> adj[it.u] { <span class="k">if</span> nd := it.d + e.w; nd &lt; dist[e.v] {
+        dist[e.v] = nd; heap.<span class="T">Push</span>(pq, <span class="T">Item</span>{nd, e.v}) } }
+}
+<span class="c">// Union-Find</span>
+par := <span class="b">make</span>([]<span class="t">int</span>, n); <span class="k">for</span> i := <span class="k">range</span> par { par[i] = i }
+<span class="k">var</span> find <span class="k">func</span>(x <span class="t">int</span>) <span class="t">int</span>
+find = <span class="k">func</span>(x <span class="t">int</span>) <span class="t">int</span> { <span class="k">if</span> par[x] != x { par[x] = find(par[x]) }; <span class="k">return</span> par[x] }
+union := <span class="k">func</span>(a, b <span class="t">int</span>) { a, b = find(a), find(b); <span class="k">if</span> a != b { par[a] = b } }
+<span class="c">// binary search on answer: smallest x in [lo, hi) with ok(x)</span>
+lo, hi := <span class="n">0</span>, <span class="t">int</span>(<span class="n">1e18</span>)
+<span class="k">for</span> lo &lt; hi { mid := lo + (hi-lo)/<span class="n">2</span>; <span class="k">if</span> ok(mid) { hi = mid } <span class="k">else</span> { lo = mid+<span class="n">1</span> } }
+<span class="c">// DP table · prefix sum · sliding window</span>
+dp := <span class="b">make</span>([][]<span class="t">int</span>, n+<span class="n">1</span>); <span class="k">for</span> i := <span class="k">range</span> dp { dp[i] = <span class="b">make</span>([]<span class="t">int</span>, m+<span class="n">1</span>) }
+pre := <span class="b">make</span>([]<span class="t">int</span>, n+<span class="n">1</span>); <span class="k">for</span> i, x := <span class="k">range</span> a { pre[i+<span class="n">1</span>] = pre[i] + x } <span class="c">// prefix</span>
+l, sum := <span class="n">0</span>, <span class="n">0</span>; <span class="k">for</span> r, x := <span class="k">range</span> a { sum += x; <span class="k">for</span> sum &gt; k { sum -= a[l]; l++ } }
+memo := <span class="k">map</span>[<span class="t">int</span>]<span class="t">int</span>{}   <span class="c">// memoized recursion: map + recursive closure (see dfs)</span>
+<span class="k">func</span> gcd(a, b <span class="t">int</span>) <span class="t">int</span> { <span class="k">for</span> b != <span class="n">0</span> { a, b = b, a%b }; <span class="k">return</span> a }
+<span class="k">func</span> pw(b, e, m <span class="t">int</span>) <span class="t">int</span> { r := <span class="n">1</span>; b %= m
+    <span class="k">for</span> e &gt; <span class="n">0</span> { <span class="k">if</span> e&amp;<span class="n">1</span> == <span class="n">1</span> { r = r * b % m }; b = b * b % m; e &gt;&gt;= <span class="n">1</span> }; <span class="k">return</span> r }</pre>
+</section>
+
+<!-- 20 Misc · Easy to Forget -->
+<section class="card alg" id="s20">
+<h2><span class="no">20</span>Misc · Easy to Forget<em>ALGORITHMS</em></h2>
+<pre>bits.<span class="T">OnesCount</span>(<span class="t">uint</span>(x)) bits.<span class="T">Len</span>(<span class="t">uint</span>(x)) bits.<span class="T">TrailingZeros</span>(x)  <span class="sans dim">math/bits; x &amp; (x - 1)</span>
+<span class="n">1</span> &lt;&lt; k x &gt;&gt; <span class="n">1</span> x &amp;^ y                               <span class="sans dim">shift · and-not (bit clear)</span>
+os.<span class="T">Args</span>[<span class="n">1</span>:] os.<span class="T">ReadFile</span>(p) os.<span class="T">WriteFile</span>(p, b, <span class="n">0644</span>)  <span class="sans dim">CLI args · read / write a file</span>
+x, y = y, x a[i], a[j] = a[j], a[i]                <span class="sans dim">tuple assignment swap</span>
+<span class="k">if</span> _, ok := m[k]; ok { } <span class="c">// scoped ok</span>              <span class="sans dim">shadowing-safe check</span>
+[]<span class="t">int</span>(<span class="p">nil</span>) <span class="b">len</span> == <span class="n">0</span> <span class="b">append</span> works                   <span class="sans dim">nil slice is a valid empty slice</span>
+<span class="k">go</span> run . &amp;&amp; <span class="k">go</span> build -o app . &amp;&amp; <span class="k">go</span> test ./...     <span class="sans dim">run · build · test</span>
+<span class="k">go</span> vet ./... <span class="k">go</span> run -race . gofmt -w .             <span class="sans dim">vet · race detector · format</span></pre>
+<p class="note"><span class="lbl">Routine</span><span class="sans"> ① </span><code class="chip">bufio</code><span class="sans"> reader + writer + </span><code class="s k0 chip">defer</code><code class="chip"> </code><code class="T chip">Flush</code><code class="chip">()</code><span class="sans"> ② parse all input first ③ </span><code class="t chip">int</code><span class="sans"> is 64-bit — no overflow worries below 9e18 ④ </span><code class="b chip">append</code><span class="sans"> → reassign ⑤ unused var? </span><code class="chip">_ = x</code><span class="sans"> ⑥ </span><code class="s k0 chip">go</code><code class="chip"> run -race</code><span class="sans"> when goroutines misbehave.</span></p>
+</section>
+
+</div></main>
+</div>
+</body>
+</html>
